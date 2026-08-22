@@ -1,0 +1,62 @@
+/*
+ * Design tokens — repris à l'identique du design system actuel de family-menu
+ * (dépôt drewing-eng/family-menu, branche main, public/style.css).
+ *
+ * ATTENTION : family-menu a plusieurs branches avec des designs différents et
+ * obsolètes (thème crème/terracotta/Georgia). Seule la branche `main` fait foi.
+ * Ne jamais réintroduire ce thème crème par erreur.
+ *
+ * family-menu n'a pas de mode sombre : le bloc [data-theme="dark"] ci-dessous
+ * est une extension propre à GAUTIER Family, à valider visuellement au fil de l'eau.
+ */
+:root {
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --surface2: #f5f5f5;
+  --border: #ebebeb;
+  --text: #111110;
+  --text-muted: #9f9f9f;
+  --accent: #5b5bd4;
+  --accent-light: #edeafc;
+  --lavender: #4a3a9e;
+  --green: #347a34;   --green-light: #eaf5ea;
+  --orange: #b86800;  --orange-light: #fef3e2;
+  --red: #c0392b;     --red-light: #fde8e6;
+  --blue: #1d6fa8;    --blue-light: #e2eef8;
+  --midi-bg: #edf7ed;
+  --soir-bg: #ede8f8;
+
+  --radius: 18px;
+  --radius-sm: 10px;
+  --radius-pill: 999px;
+  --shadow: 0 2px 12px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.05);
+
+  /* état "actif" de la navigation (pilule noire, comme .nav-top .tab-btn.active) */
+  --nav-active-bg: #111110;
+  --nav-active-fg: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #131215; --surface: #1c1b1f; --surface2: #242327; --border: #322f36;
+    --text: #f2f1f4; --text-muted: #99969f; --accent: #8f8ff2; --accent-light: #2c2a4d;
+    --lavender: #b6acf5;
+    --green: #6bbf6f; --green-light: #1c2e1c; --orange: #e0a542; --orange-light: #332a15;
+    --red: #e5766a;   --red-light: #3a2220;   --blue: #6fa9dd; --blue-light: #1c2c3a;
+    --midi-bg: #1b2a1c; --soir-bg: #29233f;
+    --shadow: 0 2px 14px rgba(0, 0, 0, 0.4);
+    --nav-active-bg: #f2f1f4;
+    --nav-active-fg: #131215;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #131215; --surface: #1c1b1f; --surface2: #242327; --border: #322f36;
+  --text: #f2f1f4; --text-muted: #99969f; --accent: #8f8ff2; --accent-light: #2c2a4d;
+  --lavender: #b6acf5;
+  --green: #6bbf6f; --green-light: #1c2e1c; --orange: #e0a542; --orange-light: #332a15;
+  --red: #e5766a;   --red-light: #3a2220;   --blue: #6fa9dd; --blue-light: #1c2c3a;
+  --midi-bg: #1b2a1c; --soir-bg: #29233f;
+  --shadow: 0 2px 14px rgba(0, 0, 0, 0.4);
+  --nav-active-bg: #f2f1f4;
+  --nav-active-fg: #131215;
+}
