@@ -1,0 +1,16 @@
+services:
+  family-app:
+    image: ghcr.io/drewing-eng/family-app:latest
+    container_name: family-app
+    restart: unless-stopped
+    environment:
+      - POCKETBASE_URL=${POCKETBASE_URL}
+    networks:
+      - family_app_default
+      - npm_default
+
+networks:
+  family_app_default:
+    driver: bridge
+  npm_default:
+    external: true
