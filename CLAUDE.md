@@ -17,10 +17,8 @@ npm run build     # build de production dans dist/
 npm run start     # sert dist/ via Express (ce que fait le conteneur Docker)
 ```
 
-Pas de PocketBase local par défaut : `npm run dev` retombe sur
-`VITE_POCKETBASE_URL` (voir `.env.example`) si aucune instance n'est
-configurée. Les appels API échoueront tant que l'instance PocketBase réelle
-n'est pas branchée (chantier 2) — c'est attendu à ce stade.
+`npm run dev` retombe sur `VITE_POCKETBASE_URL` (voir `.env.example`) — en
+pratique pointe vers `https://pb.libaxio.com` (voir "Infra VPS" ci-dessous).
 
 ## Vision
 
@@ -30,11 +28,23 @@ Menus, Stocks et Finances (celui-ci plus tard). Détail complet dans le PRD
 lié ci-dessus ; ce fichier documente ce qui est *implémenté* et les décisions
 qui ne doivent pas être révisées sans discussion explicite.
 
+## Infra VPS (confirmée)
+
+- **PocketBase** : https://pb.libaxio.com — instance en ligne, superadmin
+  créé côté utilisateur (je n'ai pas ces identifiants). Collection `users`
+  déjà étendue avec `role` (select : `admin`/`membre`/`invite`),
+  `apps_autorisees` (select multiple : `wall`/`menus`/`stocks`/`finances`) et
+  `theme` (select : `clair`/`sombre`).
+- **App** : sous-domaine prévu `family.libaxio.com`, même reverse proxy que
+  family-menu et PocketBase.
+- **Déploiement** : voir "Déploiement" ci-dessous — Watchtower + ghcr.io,
+  aucune étape manuelle après le bootstrap initial.
+
 ## Architecture
 
 **Hébergement** — Docker self-hosted, même pattern que family-menu (réseau
 `npm_default` externe pour le reverse proxy géré côté serveur, hors de ce
-dépôt). Nom de domaine géré par l'utilisateur, hors périmètre de ce dépôt.
+dépôt).
 
 **Frontend** — Vite + JavaScript vanilla (pas de TypeScript, pas de
 framework), modules ES natifs. Vite est un choix délibéré : contrairement à
@@ -61,6 +71,28 @@ différentes sans reconstruction) :
 **PWA** — pas encore scaffoldée : manifest + installabilité font partie du
 chantier 2 (coquille applicative), pas du chantier 1.
 
+## Déploiement
+
+**Pipeline** — `.github/workflows/docker-publish.yml` : à chaque push sur
+`main` ou `claude/family-app-consolidation-mndn7r`, build l'image et la
+pousse sur `ghcr.io/drewing-eng/family-app:latest` (calqué sur le workflow
+de family-menu).
+
+**Sur le VPS** — Watchtower tourne déjà et surveille les images ghcr.io
+(comme pour family-menu) : une fois le conteneur démarré, il se met à jour
+tout seul à chaque nouvelle image, sans intervention manuelle.
+
+**Bootstrap initial (une seule fois, à faire côté VPS)** :
+1. `docker-compose.yml` de ce dépôt, à côté d'un fichier `.env` **non
+   commité** contenant :
+   ```
+   POCKETBASE_URL=https://pb.libaxio.com
+   ```
+2. `docker compose up -d` une première fois pour créer le conteneur —
+   Watchtower prend le relais pour toutes les mises à jour suivantes.
+3. Reverse proxy : pointer `family.libaxio.com` vers le conteneur
+   `family-app` sur le réseau `npm_default`, comme family-menu.
+
 ## Structure du dépôt
 
 ```
@@ -72,6 +104,7 @@ src/styles/global.css    reset + styles de base
 server.js                serveur Express de prod (sert dist/ + /config.js)
 Dockerfile                build multi-stage (vite build → image Express)
 docker-compose.yml        déploiement self-hosted, réseau npm_default
+.github/workflows/        pipeline ghcr.io (voir "Déploiement")
 ```
 
 ## Design system
@@ -132,15 +165,17 @@ sur son profil PocketBase une fois l'auth branchée (chantier 2).
   le code de ce module est réécrit (nouveau design, PocketBase) — pas un
   import direct du Worker Cloudflare.
 
-## Rôles & auth (PocketBase) — schéma prévu, pas encore implémenté
+## Rôles & auth (PocketBase)
 
-Instance PocketBase pas encore créée (infos de connexion à venir). Schéma
-cible pour le chantier 2 :
-- `users` (collection auth native) — champs additionnels : `role`
-  (`admin`/`membre`/`invite`), `apps_autorisees` (multi-select), `theme`
-  (`clair`/`sombre`).
-- `catalogue`, `coffres`, `emplacements`, `historique` — chantier 3 (module
-  Stocks), schéma détaillé dans le PRD.
+Instance en ligne (https://pb.libaxio.com), collection `users` déjà étendue
+avec les champs `role`, `apps_autorisees`, `theme` (voir "Infra VPS"
+ci-dessus). Reste à faire côté code, chantier 2 :
+- brancher `src/lib/pocketbase.js` sur cette instance (via `.env`/`config.js`),
+- construire les écrans de login et la garde de route selon `role` +
+  `apps_autorisees`.
+
+`catalogue`, `coffres`, `emplacements`, `historique` — chantier 3 (module
+Stocks), schéma détaillé dans le PRD, pas encore créés dans PocketBase.
 
 ## Roadmap (chantiers)
 
@@ -158,9 +193,10 @@ cible pour le chantier 2 :
 
 ## Points encore ouverts
 
-- Infos de connexion de la nouvelle instance PocketBase (à venir).
-- URL de production de family-menu, pour l'iframe.
+- URL de production de family-menu, pour l'iframe (chantier 4).
 - Détail fin des règles d'API PocketBase par rôle (chantier 5).
+- Confirmation que Watchtower a bien les credentials ghcr.io pour cette
+  nouvelle image (normalement oui, déjà utilisées pour family-menu).
 
 ## Simplicité délibérée
 
