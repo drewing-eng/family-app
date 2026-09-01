@@ -1,0 +1,189 @@
+import { pb, logout, userRole, userApps, updateTheme } from '../lib/pocketbase.js';
+import { applyTheme, currentThemeAttr } from '../lib/theme.js';
+
+const ROLE_LABEL = { admin: 'Admin', membre: 'Membre', invite: 'Invité' };
+
+const ALL_MODULES = [
+  { id: 'wall', icon: '🏠', label: 'Accueil', always: true },
+  { id: 'menus', icon: '🗓', label: 'Menus' },
+  { id: 'stocks', icon: '📦', label: 'Stocks' },
+];
+
+function initials(user) {
+  const name = user?.name || user?.email || '?';
+  return name
+    .split(/[\s@.]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((s) => s[0].toUpperCase())
+    .join('') || '?';
+}
+
+function hashModule() {
+  const m = (location.hash || '').replace(/^#\/?/, '');
+  return ['wall', 'menus', 'stocks'].includes(m) ? m : 'wall';
+}
+
+export function renderShell(root) {
+  const user = pb.authStore.record;
+  const allowed = userApps(user);
+  const modules = ALL_MODULES.filter((m) => m.always || allowed.includes(m.id));
+  const state = { module: hashModule() };
+  if (!modules.some((m) => m.id === state.module)) state.module = 'wall';
+
+  root.innerHTML = `
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="sidebar-brand">
+          <div class="name">GAUTIER Family</div>
+          <div class="tag">Foyer numérique</div>
+        </div>
+        <nav class="side-nav" id="sideNav"></nav>
+        <div class="side-profile">
+          <div class="avatar">${initials(user)}</div>
+          <div class="who">
+            <div class="n">${escapeHtml(user?.name || user?.email || '')}</div>
+            <div class="r">${ROLE_LABEL[userRole(user)] || 'Invité'}</div>
+          </div>
+          <button class="icon-btn" id="themeBtnDesktop" title="Changer de thème"></button>
+          <button class="icon-btn" id="logoutBtnDesktop" title="Se déconnecter">⏻</button>
+        </div>
+      </aside>
+
+      <div class="mobile-header">
+        <button class="back" id="mobileBack" hidden aria-label="Retour à l'accueil">←</button>
+        <h1 id="mobileTitle">GAUTIER Family</h1>
+        <button class="icon-btn" id="themeBtnMobile" title="Changer de thème"></button>
+        <button class="icon-btn" id="logoutBtnMobile" title="Se déconnecter">⏻</button>
+      </div>
+
+      <main class="main">
+        <div class="pane-title"><h2 id="paneTitle">Accueil</h2></div>
+        <div class="content-body" id="contentBody"></div>
+      </main>
+    </div>
+  `;
+
+  const sideNav = root.querySelector('#sideNav');
+  const contentBody = root.querySelector('#contentBody');
+  const paneTitle = root.querySelector('#paneTitle');
+  const mobileTitle = root.querySelector('#mobileTitle');
+  const mobileBack = root.querySelector('#mobileBack');
+
+  function moduleInfo(id) {
+    return modules.find((m) => m.id === id) || modules[0];
+  }
+
+  function render() {
+    location.hash = `#/${state.module}`;
+
+    sideNav.innerHTML = modules
+      .map(
+        (m) =>
+          `<button class="side-item${m.id === state.module ? ' active' : ''}" data-nav="${m.id}"><span class="ic">${m.icon}</span>${m.label}</button>`
+      )
+      .join('') +
+      `<button class="side-item disabled" disabled><span class="ic">💶</span>Finances<span class="soon">bientôt</span></button>`;
+
+    const info = moduleInfo(state.module);
+    paneTitle.textContent = info.label;
+
+    if (state.module === 'wall') {
+      mobileBack.hidden = true;
+      mobileTitle.textContent = 'GAUTIER Family';
+    } else {
+      mobileBack.hidden = false;
+      mobileTitle.textContent = `${info.icon} ${info.label}`;
+    }
+
+    contentBody.innerHTML = renderContent(state.module, modules);
+  }
+
+  root.addEventListener('click', (e) => {
+    const nav = e.target.closest('[data-nav]');
+    if (nav) {
+      state.module = nav.getAttribute('data-nav');
+      render();
+      return;
+    }
+    const goto = e.target.closest('[data-goto]');
+    if (goto) {
+      state.module = goto.getAttribute('data-goto');
+      render();
+      return;
+    }
+    if (e.target.closest('#mobileBack')) {
+      state.module = 'wall';
+      render();
+      return;
+    }
+    if (e.target.closest('#themeBtnDesktop') || e.target.closest('#themeBtnMobile')) {
+      const next = currentThemeAttr() === 'sombre' ? 'clair' : 'sombre';
+      applyTheme(next);
+      syncThemeButtons();
+      updateTheme(next).catch(() => {});
+      return;
+    }
+    if (e.target.closest('#logoutBtnDesktop') || e.target.closest('#logoutBtnMobile')) {
+      logout();
+      return;
+    }
+  });
+
+  window.addEventListener('hashchange', () => {
+    const next = hashModule();
+    if (modules.some((m) => m.id === next) && next !== state.module) {
+      state.module = next;
+      render();
+    }
+  });
+
+  function syncThemeButtons() {
+    const icon = currentThemeAttr() === 'sombre' ? '☾' : '☀';
+    root.querySelector('#themeBtnDesktop').textContent = icon;
+    root.querySelector('#themeBtnMobile').textContent = icon;
+  }
+
+  syncThemeButtons();
+  render();
+}
+
+function renderContent(moduleId, modules) {
+  if (moduleId === 'wall') return renderWall(modules);
+  if (moduleId === 'menus') {
+    return emptyState('🔗', 'Connexion à créer', "L'URL de production de family-menu n'a pas encore été renseignée. Une fois fournie, cet espace affichera l'application en iframe.");
+  }
+  if (moduleId === 'stocks') {
+    return emptyState('📦', 'Module en construction', 'La gestion des stocks arrive au chantier 3.');
+  }
+  return '';
+}
+
+function renderWall(modules) {
+  let html = `
+    <div class="wall-header">
+      <div class="hello">Bonjour</div>
+      <h1>Le mur de la famille</h1>
+    </div>
+    <div class="empty-state small">
+      <p>Le menu du jour et les alertes de stock arriveront ici au chantier 4.</p>
+    </div>`;
+
+  const tiles = modules.filter((m) => m.id !== 'wall');
+  if (tiles.length) {
+    html += '<div class="mobile-modules"><div class="section-eyebrow">Modules</div><div class="tiles">';
+    tiles.forEach((m) => {
+      html += `<button class="tile" data-goto="${m.id}"><span class="ic">${m.icon}</span><span class="lbl">${m.label}</span></button>`;
+    });
+    html += '</div></div>';
+  }
+  return html;
+}
+
+function emptyState(icon, title, text) {
+  return `<div class="empty-state"><div class="ic">${icon}</div><p><strong>${escapeHtml(title)}</strong></p><p class="small">${escapeHtml(text)}</p></div>`;
+}
+
+function escapeHtml(str) {
+  return String(str || '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}

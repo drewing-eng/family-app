@@ -30,3 +30,32 @@ export function logout() {
 export function onAuthChange(callback) {
   return pb.authStore.onChange(() => callback(pb.authStore.record), true);
 }
+
+// Revalide la session au démarrage (le compte a pu être désactivé/supprimé
+// depuis le dernier passage) ; efface la session locale si elle n'est plus valide.
+export async function refreshSession() {
+  if (!pb.authStore.isValid) return;
+  try {
+    await pb.collection('users').authRefresh();
+  } catch {
+    pb.authStore.clear();
+  }
+}
+
+export function userRole(user) {
+  return user?.role || 'invite';
+}
+
+export function userApps(user) {
+  return Array.isArray(user?.apps_autorisees) ? user.apps_autorisees : [];
+}
+
+export function userTheme(user) {
+  return user?.theme === 'sombre' ? 'sombre' : 'clair';
+}
+
+export function updateTheme(theme) {
+  const user = currentUser();
+  if (!user) return Promise.resolve();
+  return pb.collection('users').update(user.id, { theme });
+}

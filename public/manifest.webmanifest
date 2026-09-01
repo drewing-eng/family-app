@@ -1,0 +1,13 @@
+{
+  "name": "GAUTIER Family",
+  "short_name": "Family",
+  "description": "Le foyer numérique de la famille Gautier",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#5b5bd4",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}
