@@ -25,6 +25,11 @@ pratique pointe vers `https://pb.libaxio.com` (voir "Infra VPS" ci-dessous).
 n'ont pas de valeur par défaut. Un compte sans `apps_autorisees` ne verra que
 le Wall (comportement volontaire, voir "Rôles & auth" ci-dessous).
 
+**Avant de tester le module Stocks** : les collections `catalogue`,
+`coffres`, `emplacements`, `historique` doivent exister dans PocketBase — je
+ne peux pas les créer moi-même (pas de superadmin). Schéma exact dans
+"Modèle de données PocketBase" ci-dessous.
+
 ## Vision
 
 Un seul foyer numérique : un mur familial (Family Wall) comme accueil mobile,
@@ -62,7 +67,11 @@ plus (pas de React/Vue, pas de state manager). Routage par hash
 **Backend** — [PocketBase](https://pocketbase.io) : auth + toutes les
 données. C'est un service séparé (son propre conteneur, sa propre instance),
 pas géré dans ce dépôt. Ce dépôt ne fait que s'y connecter en client HTTP via
-le SDK `pocketbase`.
+le SDK `pocketbase`. **Seul le superadmin PocketBase peut créer/modifier des
+collections** — un compte applicatif avec `role = "admin"` (notre propre
+champ) n'a aucun pouvoir sur le schéma, seulement sur les données. Toute
+évolution du schéma passe donc par une instruction à l'utilisateur, jamais
+par un appel API de ma part.
 
 **Config runtime vs build-time** — l'URL PocketBase ne doit *pas* être figée
 au build (la même image Docker doit pouvoir pointer vers des instances
@@ -105,16 +114,66 @@ index.html                point d'entrée Vite (manifest, icône, /config.js)
 src/main.js                bootstrap : thème par défaut, boot(), service worker
 src/lib/pocketbase.js      client PocketBase (auth, session, thème, rôle/apps)
 src/lib/theme.js           application du data-theme (jamais implicite)
+src/lib/stocks.js          accès données Stocks (catalogue/coffres/emplacements/historique)
 src/views/login.js         écran de connexion
-src/views/shell.js         coquille : sidebar/wall, navigation, contenu par module
+src/views/shell.js         coquille : sidebar/wall, navigation, sous-onglets de module
+src/views/stocks.js        module Stocks : Gestion/Journal/Catalogue, dialogues
 src/styles/tokens.css      design tokens (voir "Design system" ci-dessous)
-src/styles/global.css      reset + styles de base + coquille + login
+src/styles/global.css      reset + styles de base + coquille + login + Stocks
 server.js                  serveur Express de prod (sert dist/ + /config.js)
 public/manifest.webmanifest, sw.js, icon.svg   PWA
 Dockerfile                  build multi-stage (vite build → image Express)
 docker-compose.yml          déploiement self-hosted, réseau npm_default
 .github/workflows/          pipeline ghcr.io (voir "Déploiement")
 ```
+
+## Modèle de données PocketBase — module Stocks (à créer par le superadmin)
+
+Pas d'event-sourcing façon Chest_gestion (décision verrouillée) : état stocké
+directement, `historique` en écriture seule pour la traçabilité.
+
+**Collection `catalogue`**
+| Champ | Type | Options |
+|---|---|---|
+| `nom` | Text | requis |
+| `quantite_max` | Number | requis, min 1 |
+
+**Collection `coffres`**
+| Champ | Type | Options |
+|---|---|---|
+| `nom` | Text | requis |
+| `nb_emplacements` | Number | requis, min 1 |
+
+**Collection `emplacements`**
+| Champ | Type | Options |
+|---|---|---|
+| `coffre` | Relation → `coffres` | requis, une seule sélection, cascade delete activé |
+| `index` | Number | requis, min 1 |
+| `article` | Relation → `catalogue` | optionnel (emplacement vide autorisé), une seule sélection |
+| `quantite` | Number | requis, défaut 0, min 0 |
+
+**Collection `historique`**
+| Champ | Type | Options |
+|---|---|---|
+| `emplacement` | Relation → `emplacements` | requis, une seule sélection, **cascade delete désactivé** (l'historique doit survivre à la suppression d'un coffre/emplacement) |
+| `coffre_nom` | Text | requis (dénormalisé, pour rester lisible même si le coffre est supprimé) |
+| `article_nom` | Text | requis (dénormalisé, idem) |
+| `type` | Select | requis, une seule sélection, valeurs : `ajout`, `retrait` |
+| `quantite` | Number | requis (le delta, toujours positif — `type` donne le sens) |
+
+`created` (horodatage) est un champ système PocketBase, pas besoin de le
+créer manuellement.
+
+**Règles d'API** (onglet "API Rules" de chaque collection) — appliquent déjà
+la distinction de rôles pendant que le vrai chantier de sécurisation
+(chantier 5) n'est pas encore fait :
+- `catalogue`, `coffres`, `emplacements` : List/View = `@request.auth.id != ""` ;
+  Create/Update/Delete = `@request.auth.role = "admin" || @request.auth.role = "membre"`.
+- `historique` : List/View = `@request.auth.id != ""` ;
+  Create = `@request.auth.role = "admin" || @request.auth.role = "membre"` ;
+  Update/Delete = laissés vides (personne, y compris via l'app — traçabilité
+  non modifiable ; une correction reste possible directement dans l'admin
+  PocketBase si vraiment nécessaire).
 
 ## Design system
 
@@ -133,13 +192,15 @@ Résumé du design réel :
   (`-0.02em` à `-0.03em`) — **aucune police serif nulle part**.
 - Cartes : coins très arrondis (18px), ombre douce, **aucune bordure**.
 - Navigation : bouton actif en pilule noire pleine (`#111110` bg, blanc),
-  reste en texte gris (`--text-muted`). Repris pour `.side-item.active` via
-  les tokens `--nav-active-bg`/`--nav-active-fg` (qui s'inversent en sombre).
+  reste en texte gris (`--text-muted`). Repris pour `.side-item.active` et
+  `.tab-btn.active` (sous-onglets de module) via les tokens
+  `--nav-active-bg`/`--nav-active-fg` (qui s'inversent en sombre).
 - Cartes "repas" Midi (vert pâle `--midi-bg`) / Soir (violet pâle
   `--soir-bg`) — vocabulaire réservé pour le widget "menu du jour" du Wall
   (chantier 4, pas encore construit).
 - Badges et indicateurs de statut : pilules colorées (`--accent-light`,
-  `--green-light`, `--orange-light`, `--red-light`, `--blue-light`).
+  `--green-light`, `--orange-light`, `--red-light`, `--blue-light`). Le badge
+  "Stock en tension" (module Stocks) réutilise ce vocabulaire (`.gluco.eleve`).
 
 **Mode sombre** — n'existe pas dans family-menu (family-menu est 100% clair).
 C'est une extension propre à GAUTIER Family, dérivée manuellement des tokens
@@ -152,29 +213,34 @@ pose toujours `data-theme` explicitement (jamais l'attribut absent), et
 choix est persisté via `updateTheme()` (`pocketbase.js`) sur le champ
 `theme` de l'utilisateur.
 
-⚠️ **Pièges CSS rencontrés au chantier 2** (à garder en tête pour la suite) :
+⚠️ **Pièges CSS rencontrés (à garder en tête pour la suite)** :
 - Un conteneur flex à deux mises en page (sidebar+contenu sur desktop,
   header+contenu empilés sur mobile) a besoin de `flex-direction: column`
   par défaut et `row` seulement au-delà du breakpoint desktop — l'inverse
   (row par défaut) casse silencieusement la mise en page mobile sans erreur
-  console, seul un test visuel le révèle.
+  console, seul un test visuel le révèle. (Chantier 2.)
 - Deux règles CSS de même spécificité qui ciblent le même élément (ex. une
   classe utilitaire `.mobile-only { display: none }` en media query, et une
   classe de composant `.tiles { display: grid }` non conditionnelle) se
   départagent par **l'ordre d'écriture dans le fichier**, pas par la media
   query — la dernière règle déclarée gagne toujours. Solution retenue :
-  un wrapper dédié (`.mobile-modules`) qui ne porte que la logique
-  d'affichage, jamais partagé avec une classe qui fixe aussi un `display`.
-- Les deux ont été trouvés par une capture d'écran Playwright avant le push,
-  pas par relecture de code — utile de garder ce réflexe pour la suite.
+  un wrapper dédié qui ne porte que la logique d'affichage, jamais partagé
+  avec une classe qui fixe aussi un `display`. Appliqué deux fois :
+  `.mobile-modules` (chantier 2) et `.subtabs-desktop`/`.subtabs-mobile`
+  avec `:not(:empty)`/`:empty` plutôt qu'un `display` inline en JS
+  (chantier 3) — **ne jamais piloter la visibilité responsive depuis le JS
+  avec `.style.display = ...`, toujours en CSS pur**, comme `.sidebar`/
+  `.mobile-header` le font déjà.
+- Ces bugs ont été trouvés par des captures d'écran Playwright avant le
+  push, pas par relecture de code — garder ce réflexe pour la suite.
 
 ## Décisions verrouillées (ne pas revenir dessus sans décision produit explicite)
 
 - **Navigation à deux niveaux** : niveau app = sidebar sur ordinateur / Family
   Wall comme hub sur mobile (pas de barre d'onglets globale en bas sur
   mobile). Niveau module = barre secondaire type onglets, en haut sur
-  ordinateur / en bas sur mobile (ex. Stocks : Gestion / Journal / Catalogue,
-  pas encore construite — arrive avec le module lui-même au chantier 3).
+  ordinateur / en bas sur mobile — implémenté pour Stocks (Gestion / Journal
+  / Catalogue) au chantier 3, réutilisable tel quel par un futur module.
 - **Rôles** : Admin (accès total + gestion des comptes), Membre (écriture sur
   tout sauf l'admin), Invité (lecture seule). Chaque utilisateur a en plus un
   champ "applications ouvertes" (multi-sélection des modules visibles),
@@ -189,11 +255,14 @@ choix est persisté via `updateTheme()` (`pocketbase.js`) sur le champ
   vide/absent sur un compte, l'utilisateur ne voit que le Wall (défaut
   restrictif, pas permissif) — pense à le renseigner sur chaque compte créé.
 - **Stocks** : pas d'event-sourcing façon Chest_gestion. État stocké
-  directement (collections `coffres`/`emplacements` à jour en temps réel) +
-  collection `historique` en lecture seule pour la traçabilité, non rejouable.
-  Seuil "Stock en tension" = quantité restante < 20 % du maximum catalogue
-  pour cet emplacement. Pas de suivi de qui a fait quelle action (pas un
-  besoin exprimé).
+  directement (`emplacements.quantite`) + collection `historique` en
+  écriture seule pour la traçabilité, non rejouable (règles Update/Delete
+  vides, voir "Modèle de données" ci-dessus). Seuil "Stock en tension" =
+  quantité restante < 20 % du maximum catalogue pour cet emplacement. Pas de
+  suivi de qui a fait quelle action (pas un besoin exprimé). Ajuster un
+  emplacement fixe une **quantité absolue** (pas un delta relatif ajout/
+  retrait séparé) — plus simple côté UI, le delta est calculé et tracé dans
+  l'historique automatiquement.
 - **Menus** : intégré en iframe (pas un lien externe simple). Tant que l'URL
   de production de family-menu n'est pas fournie, afficher un état "Connexion
   à créer".
@@ -216,10 +285,10 @@ Implémenté au chantier 2 :
   rôle en badge dans le profil (sidebar desktop), gère la déconnexion.
 - Pas encore fait : aucun écran de gestion des comptes (création
   d'utilisateurs) — reste à faire à l'admin PocketBase directement pour
-  l'instant, une UI dédiée n'est pas dans le périmètre du chantier 2.
+  l'instant, une UI dédiée n'est pas dans le périmètre actuel.
 
-`catalogue`, `coffres`, `emplacements`, `historique` — chantier 3 (module
-Stocks), schéma détaillé dans le PRD, pas encore créés dans PocketBase.
+Module Stocks (chantier 3) : voir "Modèle de données PocketBase" ci-dessus
+pour le détail des collections et de leurs règles d'API par rôle.
 
 ## Roadmap (chantiers)
 
@@ -227,25 +296,31 @@ Stocks), schéma détaillé dans le PRD, pas encore créés dans PocketBase.
       client PocketBase, Docker/docker-compose, ce CLAUDE.md.
 - [x] **Chantier 2 — Coquille applicative** : auth PocketBase réelle, sidebar
       desktop / Family Wall mobile, mode sombre par profil, manifest PWA.
-- [ ] **Chantier 3 — Module Stocks** : collections PocketBase, CRUD
-      coffres/emplacements/catalogue, badge "stock en tension".
+- [x] **Chantier 3 — Module Stocks** : collections PocketBase (schéma
+      documenté, à créer par le superadmin), CRUD coffres/emplacements/
+      catalogue, badge "stock en tension", journal en lecture seule.
 - [ ] **Chantier 4 — Module Menus & Family Wall** : iframe family-menu,
       widgets menu du jour + alertes stock sur le Wall.
-- [ ] **Chantier 5 — Sécurisation** : règles d'API PocketBase par
-      collection/rôle, durcissement de l'admin PocketBase, revue des sessions.
+- [ ] **Chantier 5 — Sécurisation** : durcissement de l'admin PocketBase,
+      revue des sessions (les règles d'API par collection/rôle sont déjà
+      posées au fil des chantiers, à auditer plutôt qu'à créer de zéro).
 - [ ] **Chantier 6 — Module Finances** (plus tard, hors périmètre actuel).
 
 ## Points encore ouverts
 
+- **Collections Stocks pas encore créées côté PocketBase** — schéma exact
+  dans "Modèle de données PocketBase" ci-dessus, à faire par le superadmin
+  avant de pouvoir tester le module en conditions réelles.
 - URL de production de family-menu, pour l'iframe (chantier 4).
-- Détail fin des règles d'API PocketBase par rôle (chantier 5) — pour
-  l'instant, les règles par défaut de PocketBase s'appliquent (à durcir).
+- Audit complet des règles d'API PocketBase par rôle (chantier 5) — les
+  règles de base sont posées collection par collection au fil des
+  chantiers, mais pas encore revues dans leur ensemble.
 - Icônes PWA en SVG plutôt qu'en PNG (voir "PWA" ci-dessus) — acceptable
   pour l'instant, à revoir si le rendu iOS pose problème en usage réel.
 - Pas encore testé avec un vrai compte utilisateur en conditions réelles
-  (le chantier 2 a été validé avec un état d'authentification simulé en
-  local, jamais un vrai login contre `pb.libaxio.com`, pour ne pas risquer
-  de perturber l'instance de prod avec des tentatives de connexion factices).
+  (chantiers 2 et 3 validés avec un état PocketBase simulé en local, jamais
+  contre `pb.libaxio.com`, pour ne pas perturber l'instance de prod avec des
+  tentatives/données factices).
 
 ## Simplicité délibérée
 
