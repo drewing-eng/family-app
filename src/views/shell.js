@@ -1,5 +1,6 @@
 import { pb, logout, userRole, userApps, updateTheme } from '../lib/pocketbase.js';
 import { applyTheme, currentThemeAttr } from '../lib/theme.js';
+import { renderStocksTab } from './stocks.js';
 
 const ROLE_LABEL = { admin: 'Admin', membre: 'Membre', invite: 'Invité' };
 
@@ -7,6 +8,12 @@ const ALL_MODULES = [
   { id: 'wall', icon: '🏠', label: 'Accueil', always: true },
   { id: 'menus', icon: '🗓', label: 'Menus' },
   { id: 'stocks', icon: '📦', label: 'Stocks' },
+];
+
+const STOCK_TABS = [
+  { id: 'gestion', label: 'Gestion' },
+  { id: 'journal', label: 'Journal' },
+  { id: 'catalogue', label: 'Catalogue' },
 ];
 
 function initials(user) {
@@ -28,7 +35,7 @@ export function renderShell(root) {
   const user = pb.authStore.record;
   const allowed = userApps(user);
   const modules = ALL_MODULES.filter((m) => m.always || allowed.includes(m.id));
-  const state = { module: hashModule() };
+  const state = { module: hashModule(), stockTab: 'gestion' };
   if (!modules.some((m) => m.id === state.module)) state.module = 'wall';
 
   root.innerHTML = `
@@ -59,8 +66,11 @@ export function renderShell(root) {
 
       <main class="main">
         <div class="pane-title"><h2 id="paneTitle">Accueil</h2></div>
+        <div class="subtabs-desktop" id="subtabsDesktop"></div>
         <div class="content-body" id="contentBody"></div>
       </main>
+
+      <nav class="subtabs-mobile" id="subtabsMobile"></nav>
     </div>
   `;
 
@@ -69,6 +79,8 @@ export function renderShell(root) {
   const paneTitle = root.querySelector('#paneTitle');
   const mobileTitle = root.querySelector('#mobileTitle');
   const mobileBack = root.querySelector('#mobileBack');
+  const subtabsDesktop = root.querySelector('#subtabsDesktop');
+  const subtabsMobile = root.querySelector('#subtabsMobile');
 
   function moduleInfo(id) {
     return modules.find((m) => m.id === id) || modules[0];
@@ -96,19 +108,40 @@ export function renderShell(root) {
       mobileTitle.textContent = `${info.icon} ${info.label}`;
     }
 
-    contentBody.innerHTML = renderContent(state.module, modules);
+    if (state.module === 'stocks') {
+      const tabsHtml = STOCK_TABS.map(
+        (t) => `<button class="tab-btn${t.id === state.stockTab ? ' active' : ''}" data-stocktab="${t.id}">${t.label}</button>`
+      ).join('');
+      subtabsDesktop.innerHTML = tabsHtml;
+      subtabsMobile.innerHTML = tabsHtml;
+      contentBody.classList.add('has-subtabs');
+      renderStocksTab(contentBody, state.stockTab, user);
+    } else {
+      subtabsDesktop.innerHTML = '';
+      subtabsMobile.innerHTML = '';
+      contentBody.classList.remove('has-subtabs');
+      contentBody.innerHTML = renderContent(state.module, modules);
+    }
   }
 
   root.addEventListener('click', (e) => {
     const nav = e.target.closest('[data-nav]');
     if (nav) {
       state.module = nav.getAttribute('data-nav');
+      state.stockTab = 'gestion';
       render();
       return;
     }
     const goto = e.target.closest('[data-goto]');
     if (goto) {
       state.module = goto.getAttribute('data-goto');
+      state.stockTab = 'gestion';
+      render();
+      return;
+    }
+    const stocktab = e.target.closest('[data-stocktab]');
+    if (stocktab) {
+      state.stockTab = stocktab.getAttribute('data-stocktab');
       render();
       return;
     }
@@ -134,6 +167,7 @@ export function renderShell(root) {
     const next = hashModule();
     if (modules.some((m) => m.id === next) && next !== state.module) {
       state.module = next;
+      state.stockTab = 'gestion';
       render();
     }
   });
@@ -152,9 +186,6 @@ function renderContent(moduleId, modules) {
   if (moduleId === 'wall') return renderWall(modules);
   if (moduleId === 'menus') {
     return emptyState('🔗', 'Connexion à créer', "L'URL de production de family-menu n'a pas encore été renseignée. Une fois fournie, cet espace affichera l'application en iframe.");
-  }
-  if (moduleId === 'stocks') {
-    return emptyState('📦', 'Module en construction', 'La gestion des stocks arrive au chantier 3.');
   }
   return '';
 }

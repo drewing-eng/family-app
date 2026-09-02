@@ -89,6 +89,37 @@ h1, h2 { font-weight: 700; letter-spacing: -0.02em; }
   .content-body { padding: 14px 28px 40px; }
 }
 
+/* ══════════════ SOUS-NAVIGATION DE MODULE (ex. Stocks) ══════════════
+   Même composant .tabs/.tab-btn que la nav app-level (pilule noire active),
+   affiché en haut sur desktop, en bas (fixe) sur mobile — décision verrouillée.
+   Visibilité 100% CSS (comme .sidebar/.mobile-header) : le JS ne fait que
+   remplir/vider le innerHTML, jamais de display inline — évite le piège de
+   spécificité déjà rencontré au chantier 2. */
+.tab-btn {
+  font-family: inherit; font-size: 0.86rem; font-weight: 500; color: var(--text-muted);
+  background: none; border: none; padding: 8px 16px; border-radius: var(--radius-pill);
+  transition: background 0.15s, color 0.15s;
+}
+.tab-btn:hover { background: var(--surface2); color: var(--text); }
+.tab-btn.active { background: var(--nav-active-bg); color: var(--nav-active-fg); font-weight: 600; }
+
+.subtabs-desktop { display: none; gap: 4px; }
+.subtabs-desktop:not(:empty) { padding: 10px 28px 4px; }
+@media (min-width: 769px) { .subtabs-desktop:not(:empty) { display: flex; } }
+
+.subtabs-mobile {
+  display: flex; gap: 4px;
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 50;
+  background: var(--surface); border-top: 1px solid var(--border);
+  padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px));
+}
+.subtabs-mobile:empty { display: none; }
+.subtabs-mobile .tab-btn { flex: 1; text-align: center; }
+@media (min-width: 769px) { .subtabs-mobile { display: none; } }
+
+.content-body.has-subtabs { padding-bottom: 76px; }
+@media (min-width: 769px) { .content-body.has-subtabs { padding-bottom: 40px; } }
+
 /* ══════════════ CONTENT WIDGETS ══════════════ */
 .wall-header { margin: 8px 0 18px; }
 .wall-header .hello { font-size: 0.76rem; color: var(--text-muted); }
@@ -118,3 +149,57 @@ h1, h2 { font-weight: 700; letter-spacing: -0.02em; }
 .empty-state p { margin-bottom: 4px; font-size: 0.95rem; }
 .empty-state p strong { color: var(--text); }
 .empty-state p.small { font-size: 0.8rem; }
+
+/* ══════════════ STOCKS : panels, lignes, badges ══════════════ */
+.toolbar { display: flex; justify-content: flex-end; margin-bottom: 14px; }
+
+.panel { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 14px; overflow: hidden; }
+.panel-body { padding: 10px 18px 16px; }
+
+.row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid rgba(0, 0, 0, 0.06); }
+.row:first-child { border-top: none; }
+.row-text { font-size: 0.92rem; font-weight: 600; }
+.row-note { font-size: 0.76rem; color: var(--text-muted); margin-top: 2px; font-weight: 400; display: block; }
+
+.badge { display: inline-flex; align-items: center; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; padding: 3px 10px; border-radius: var(--radius-pill); }
+
+.gluco { display: inline-flex; align-items: center; gap: 5px; font-size: 0.72rem; font-weight: 600; padding: 3px 10px; border-radius: var(--radius-pill); }
+.gluco.eleve { background: var(--orange-light); color: var(--orange); }
+.gluco-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+.history-list { display: flex; flex-direction: column; gap: 10px; }
+.history-entry {
+  background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow);
+  padding: 16px 18px; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+}
+.history-entry-title { font-size: 0.95rem; font-weight: 600; letter-spacing: -0.01em; margin-bottom: 3px; }
+.history-entry-meta { font-size: 0.78rem; color: var(--text-muted); white-space: nowrap; }
+
+.btn-ghost {
+  font-family: inherit; font-size: 0.85rem; font-weight: 600;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-pill);
+  color: var(--text-muted); padding: 8px 16px; transition: color 0.15s, border-color 0.15s;
+}
+.btn-ghost:hover { color: var(--accent); border-color: var(--accent); }
+.btn-ghost.small { padding: 5px 12px; font-size: 0.78rem; }
+
+.link-danger {
+  font-family: inherit; font-size: 0.76rem; font-weight: 600; color: var(--red);
+  background: none; border: none; padding: 2px 4px;
+}
+.link-danger:hover { text-decoration: underline; }
+
+/* ══════════════ DIALOGUES ══════════════ */
+dialog.app-dialog {
+  border: none; border-radius: var(--radius); box-shadow: var(--shadow);
+  padding: 0; width: 100%; max-width: 360px; background: var(--surface); color: var(--text);
+}
+dialog.app-dialog::backdrop { background: rgba(17, 17, 16, 0.45); }
+.dialog-form { padding: 24px 24px 20px; display: flex; flex-direction: column; gap: 14px; }
+.dialog-form h3 { font-size: 1.1rem; font-weight: 700; letter-spacing: -0.02em; }
+.dialog-form select {
+  font-family: inherit; font-size: 0.92rem; color: var(--text); background: var(--bg);
+  border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 12px;
+}
+.dialog-error { font-size: 0.82rem; color: var(--red); }
+.dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
