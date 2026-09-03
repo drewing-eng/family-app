@@ -26,9 +26,9 @@ n'ont pas de valeur par défaut. Un compte sans `apps_autorisees` ne verra que
 le Wall (comportement volontaire, voir "Rôles & auth" ci-dessous).
 
 **Avant de tester le module Stocks** : les collections `catalogue`,
-`coffres`, `emplacements`, `historique` doivent exister dans PocketBase — je
-ne peux pas les créer moi-même (pas de superadmin). Schéma exact dans
-"Modèle de données PocketBase" ci-dessous.
+`pieces`, `rangements`, `stocks` doivent exister dans PocketBase — je ne
+peux pas les créer moi-même (pas de superadmin). Schéma exact dans "Modèle
+de données PocketBase" ci-dessous.
 
 ## Vision
 
@@ -114,10 +114,10 @@ index.html                point d'entrée Vite (manifest, icône, /config.js)
 src/main.js                bootstrap : thème par défaut, boot(), service worker
 src/lib/pocketbase.js      client PocketBase (auth, session, thème, rôle/apps)
 src/lib/theme.js           application du data-theme (jamais implicite)
-src/lib/stocks.js          accès données Stocks (catalogue/coffres/emplacements/historique)
+src/lib/stocks.js          accès données Stocks (catalogue/pieces/rangements/stocks)
 src/views/login.js         écran de connexion
 src/views/shell.js         coquille : sidebar/wall, navigation, sous-onglets de module
-src/views/stocks.js        module Stocks : Gestion/Journal/Catalogue, dialogues
+src/views/stocks.js        module Stocks : Gestion (Pièce→Rangement) / Catalogue
 src/styles/tokens.css      design tokens (voir "Design system" ci-dessous)
 src/styles/global.css      reset + styles de base + coquille + login + Stocks
 server.js                  serveur Express de prod (sert dist/ + /config.js)
@@ -129,51 +129,54 @@ docker-compose.yml          déploiement self-hosted, réseau npm_default
 
 ## Modèle de données PocketBase — module Stocks (à créer par le superadmin)
 
-Pas d'event-sourcing façon Chest_gestion (décision verrouillée) : état stocké
-directement, `historique` en écriture seule pour la traçabilité.
+⚠️ **Ce modèle a remplacé un premier essai (coffres à emplacements indexés,
+inspiré de Chest_gestion) jugé mal adapté à un usage maison — voir "Décisions
+verrouillées" ci-dessous.** Les collections `coffres`/`emplacements`/
+`historique` documentées dans une version précédente de ce fichier n'ont
+jamais été créées côté serveur : rien à migrer, ce schéma-ci est le seul valide.
+
+Pas d'unité structurée en base (`quantite`, `quantite_cible` sont de simples
+nombres) — juste une mention dans l'interface (g/kg/ml/L/pièces…), décision
+produit pour ne pas avoir à définir une unité par article pour l'instant.
 
 **Collection `catalogue`**
 | Champ | Type | Options |
 |---|---|---|
 | `nom` | Text | requis |
-| `quantite_max` | Number | requis, min 1 |
+| `quantite_cible` | Number | requis, min 1 — le niveau "stock plein" pour cet article, toute la maison confondue |
 
-**Collection `coffres`**
+**Collection `pieces`**
 | Champ | Type | Options |
 |---|---|---|
-| `nom` | Text | requis |
-| `nb_emplacements` | Number | requis, min 1 |
+| `nom` | Text | requis (Cuisine, Salle de bain, Garage…) |
 
-**Collection `emplacements`**
+**Collection `rangements`**
 | Champ | Type | Options |
 |---|---|---|
-| `coffre` | Relation → `coffres` | requis, une seule sélection, cascade delete activé |
-| `index` | Number | requis, min 1 |
-| `article` | Relation → `catalogue` | optionnel (emplacement vide autorisé), une seule sélection |
+| `nom` | Text | requis (Frigo, Placard du haut, Étagère…) |
+| `piece` | Relation → `pieces` | **requis** (un rangement appartient toujours à une pièce — si besoin d'un rangement "libre", créer une pièce "Libre" dédiée), une seule sélection, cascade delete activé |
+
+**Collection `stocks`**
+| Champ | Type | Options |
+|---|---|---|
+| `rangement` | Relation → `rangements` | requis, une seule sélection, cascade delete activé |
+| `article` | Relation → `catalogue` | requis, une seule sélection, cascade delete activé |
 | `quantite` | Number | requis, défaut 0, min 0 |
 
-**Collection `historique`**
-| Champ | Type | Options |
-|---|---|---|
-| `emplacement` | Relation → `emplacements` | requis, une seule sélection, **cascade delete désactivé** (l'historique doit survivre à la suppression d'un coffre/emplacement) |
-| `coffre_nom` | Text | requis (dénormalisé, pour rester lisible même si le coffre est supprimé) |
-| `article_nom` | Text | requis (dénormalisé, idem) |
-| `type` | Select | requis, une seule sélection, valeurs : `ajout`, `retrait` |
-| `quantite` | Number | requis (le delta, toujours positif — `type` donne le sens) |
+Une ligne `stocks` = un article réellement présent dans un rangement. Pas
+d'index, pas de capacité fixe, pas de ligne "vide" : on n'a une ligne que si
+l'article y est. L'app empêche les doublons (rangement+article) côté client
+(`upsertStock`) — si tu veux une garantie stricte côté PocketBase, tu peux
+ajouter un index unique composite sur `stocks` (`rangement`, `article`) dans
+l'admin, mais ce n'est pas indispensable.
 
 `created` (horodatage) est un champ système PocketBase, pas besoin de le
 créer manuellement.
 
-**Règles d'API** (onglet "API Rules" de chaque collection) — appliquent déjà
-la distinction de rôles pendant que le vrai chantier de sécurisation
-(chantier 5) n'est pas encore fait :
-- `catalogue`, `coffres`, `emplacements` : List/View = `@request.auth.id != ""` ;
-  Create/Update/Delete = `@request.auth.role = "admin" || @request.auth.role = "membre"`.
-- `historique` : List/View = `@request.auth.id != ""` ;
-  Create = `@request.auth.role = "admin" || @request.auth.role = "membre"` ;
-  Update/Delete = laissés vides (personne, y compris via l'app — traçabilité
-  non modifiable ; une correction reste possible directement dans l'admin
-  PocketBase si vraiment nécessaire).
+**Règles d'API** (onglet "API Rules" de chaque collection), identiques sur
+les 4 collections :
+- List/View : `@request.auth.id != ""`
+- Create/Update/Delete : `@request.auth.role = "admin" || @request.auth.role = "membre"`
 
 ## Design system
 
@@ -239,8 +242,8 @@ choix est persisté via `updateTheme()` (`pocketbase.js`) sur le champ
 - **Navigation à deux niveaux** : niveau app = sidebar sur ordinateur / Family
   Wall comme hub sur mobile (pas de barre d'onglets globale en bas sur
   mobile). Niveau module = barre secondaire type onglets, en haut sur
-  ordinateur / en bas sur mobile — implémenté pour Stocks (Gestion / Journal
-  / Catalogue) au chantier 3, réutilisable tel quel par un futur module.
+  ordinateur / en bas sur mobile — implémenté pour Stocks (Gestion /
+  Catalogue) au chantier 3, réutilisable tel quel par un futur module.
 - **Rôles** : Admin (accès total + gestion des comptes), Membre (écriture sur
   tout sauf l'admin), Invité (lecture seule). Chaque utilisateur a en plus un
   champ "applications ouvertes" (multi-sélection des modules visibles),
@@ -254,24 +257,34 @@ choix est persisté via `updateTheme()` (`pocketbase.js`) sur le champ
 - **Par défaut, aucun module optionnel visible** : si `apps_autorisees` est
   vide/absent sur un compte, l'utilisateur ne voit que le Wall (défaut
   restrictif, pas permissif) — pense à le renseigner sur chaque compte créé.
-- **Stocks** : pas d'event-sourcing façon Chest_gestion. État stocké
-  directement (`emplacements.quantite`) + collection `historique` en
-  écriture seule pour la traçabilité, non rejouable (règles Update/Delete
-  vides, voir "Modèle de données" ci-dessus). Seuil "Stock en tension" =
-  quantité restante < 20 % du maximum catalogue pour cet emplacement. Pas de
-  suivi de qui a fait quelle action (pas un besoin exprimé). Ajuster un
-  emplacement fixe une **quantité absolue** (pas un delta relatif ajout/
-  retrait séparé) — plus simple côté UI, le delta est calculé et tracé dans
-  l'historique automatiquement.
+- **Stocks — modèle Pièce → Rangement → articles** (remplace un premier
+  modèle "coffre à emplacements indexés" abandonné après relecture : c'était
+  un inventaire de jeu vidéo — capacité fixe, slots numérotés — pas une
+  gestion de stock maison, où une étagère n'a pas de "nombre de cases").
+  - Un rangement appartient **toujours** à une pièce (contrainte assumée :
+    pour un rangement "sans pièce", créer une pièce "Libre").
+  - Une ligne de stock = (rangement, article, quantité), sans capacité fixe
+    ni ligne vide — un rangement peut contenir autant d'articles différents
+    que nécessaire, et un même article peut être présent dans plusieurs
+    rangements à la fois.
+  - **Pas d'historique/journal** : état fixe, on édite directement la
+    quantité (décision explicite — "un état fixe est mieux" pour cet usage).
+  - Seuil "Stock en tension" = **calcul global** : somme de la quantité d'un
+    article dans **tous** les rangements de la maison, comparée à sa
+    `quantite_cible` catalogue ; sous 20 % → tension. Pas de tension "par
+    rangement".
+  - Pas de suivi de qui a fait quelle action (pas un besoin exprimé).
+  - Pas d'unité structurée par article (juste une mention dans l'UI — voir
+    "Modèle de données" ci-dessus) ; évolution possible plus tard si besoin.
 - **Menus** : intégré en iframe (pas un lien externe simple). Tant que l'URL
   de production de family-menu n'est pas fournie, afficher un état "Connexion
   à créer".
 - **Finances** : entrée de navigation visible mais désactivée/"à venir" —
   aucun développement avant que ce chantier soit explicitement lancé.
 - **Chest_gestion** : continue de tourner en prod (Cloudflare) en parallèle,
-  inchangé. Un fork sert de référence de départ pour le module Stocks, mais
-  le code de ce module est réécrit (nouveau design, PocketBase) — pas un
-  import direct du Worker Cloudflare.
+  inchangé — reste la référence pour Chest_gestion lui-même, mais son modèle
+  de données n'est plus la base du module Stocks de GAUTIER Family (voir
+  ci-dessus).
 
 ## Rôles & auth (PocketBase)
 
@@ -297,8 +310,8 @@ pour le détail des collections et de leurs règles d'API par rôle.
 - [x] **Chantier 2 — Coquille applicative** : auth PocketBase réelle, sidebar
       desktop / Family Wall mobile, mode sombre par profil, manifest PWA.
 - [x] **Chantier 3 — Module Stocks** : collections PocketBase (schéma
-      documenté, à créer par le superadmin), CRUD coffres/emplacements/
-      catalogue, badge "stock en tension", journal en lecture seule.
+      Pièce → Rangement → articles, documenté, à créer par le superadmin),
+      CRUD complet, badge "stock en tension" (calcul global).
 - [ ] **Chantier 4 — Module Menus & Family Wall** : iframe family-menu,
       widgets menu du jour + alertes stock sur le Wall.
 - [ ] **Chantier 5 — Sécurisation** : durcissement de l'admin PocketBase,
@@ -321,6 +334,8 @@ pour le détail des collections et de leurs règles d'API par rôle.
   (chantiers 2 et 3 validés avec un état PocketBase simulé en local, jamais
   contre `pb.libaxio.com`, pour ne pas perturber l'instance de prod avec des
   tentatives/données factices).
+- Unité par article : évolution possible plus tard si le simple rappel
+  textuel (g/kg/ml/L/pièces…) ne suffit plus à l'usage.
 
 ## Simplicité délibérée
 
