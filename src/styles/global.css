@@ -199,9 +199,14 @@ h1, h2 { font-weight: 700; letter-spacing: -0.02em; }
 .link-danger:hover { text-decoration: underline; }
 
 /* ══════════════ DIALOGUES ══════════════ */
+/* margin: auto est ce qui centre <dialog> à l'ouverture (règle du navigateur) ;
+   le reset `* { margin: 0 }` plus haut l'écrase, donc on le repose ici
+   explicitement — sinon la boîte se colle en haut à gauche du viewport. */
 dialog.app-dialog {
+  margin: auto;
   border: none; border-radius: var(--radius); box-shadow: var(--shadow);
-  padding: 0; width: 100%; max-width: 360px; background: var(--surface); color: var(--text);
+  padding: 0; width: 100%; max-width: 360px; max-height: calc(100vh - 48px); overflow-y: auto;
+  background: var(--surface); color: var(--text);
 }
 dialog.app-dialog::backdrop { background: rgba(17, 17, 16, 0.45); }
 .dialog-form { padding: 24px 24px 20px; display: flex; flex-direction: column; gap: 14px; }
