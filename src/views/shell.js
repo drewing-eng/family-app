@@ -12,7 +12,6 @@ const ALL_MODULES = [
 
 const STOCK_TABS = [
   { id: 'gestion', label: 'Gestion' },
-  { id: 'journal', label: 'Journal' },
   { id: 'catalogue', label: 'Catalogue' },
 ];
 

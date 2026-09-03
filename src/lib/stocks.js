@@ -1,15 +1,14 @@
 import { pb } from './pocketbase.js';
 
-export function tensionRatio(qty, max) {
-  if (!max || max <= 0) return 1;
-  return qty / max;
+// Les quantités n'ont pas d'unité structurée en base (décision produit :
+// une simple mention dans l'interface — g/kg/ml/L/pièces — suffit, pas de
+// champ "unité" par article pour l'instant). Voir UNIT_HINT dans stocks.js (vue).
+
+export function isTension(total, cible) {
+  return cible > 0 && total / cible < 0.2;
 }
 
-export function isTension(qty, max) {
-  return max > 0 && tensionRatio(qty, max) < 0.2;
-}
-
-// ── Catalogue ──
+// ── Catalogue (article + quantité cible, utilisée pour le calcul global de tension) ──
 export function listCatalogue() {
   return pb.collection('catalogue').getFullList({ sort: 'nom' });
 }
@@ -23,51 +22,54 @@ export function deleteCatalogueItem(id) {
   return pb.collection('catalogue').delete(id);
 }
 
-// ── Coffres & emplacements ──
-export function listCoffres() {
-  return pb.collection('coffres').getFullList({ sort: 'nom' });
+// ── Pièces ──
+export function listPieces() {
+  return pb.collection('pieces').getFullList({ sort: 'nom' });
+}
+export function createPiece(nom) {
+  return pb.collection('pieces').create({ nom });
+}
+export function deletePiece(id) {
+  return pb.collection('pieces').delete(id); // cascade supprime ses rangements (et leurs stocks)
 }
 
-export function listEmplacements(coffreId) {
-  return pb.collection('emplacements').getFullList({
-    filter: `coffre = "${coffreId}"`,
-    sort: 'index',
-    expand: 'article',
+// ── Rangements (toujours rattachés à une pièce) ──
+export function listRangements() {
+  return pb.collection('rangements').getFullList({ sort: 'nom', expand: 'piece' });
+}
+export function createRangement({ nom, piece }) {
+  return pb.collection('rangements').create({ nom, piece });
+}
+export function deleteRangement(id) {
+  return pb.collection('rangements').delete(id); // cascade supprime ses lignes de stock
+}
+
+// ── Stocks : une ligne = (rangement, article, quantité). Pas d'index, pas de
+// slot vide — on n'a une ligne que si l'article est réellement présent. ──
+export function listStocks() {
+  return pb.collection('stocks').getFullList({ sort: '-created', expand: 'article,rangement' });
+}
+
+// Ajoute une ligne, ou fusionne dans la ligne existante si cet article est
+// déjà présent dans ce rangement (pas de doublon rangement+article).
+export async function upsertStock({ rangement, article, quantite }) {
+  const existing = await pb.collection('stocks').getFirstListItem(
+    `rangement = "${rangement}" && article = "${article}"`,
+    { requestKey: null }
+  ).catch(() => null);
+  if (existing) return pb.collection('stocks').update(existing.id, { quantite });
+  return pb.collection('stocks').create({ rangement, article, quantite });
+}
+
+export function deleteStock(id) {
+  return pb.collection('stocks').delete(id);
+}
+
+// Total d'un article, tous rangements confondus (pour la tension globale).
+export function totalsByArticle(stocks) {
+  const totals = new Map();
+  stocks.forEach((s) => {
+    totals.set(s.article, (totals.get(s.article) || 0) + s.quantite);
   });
-}
-
-export async function createCoffre({ nom, nb_emplacements }) {
-  const coffre = await pb.collection('coffres').create({ nom, nb_emplacements });
-  for (let i = 1; i <= nb_emplacements; i++) {
-    await pb.collection('emplacements').create({ coffre: coffre.id, index: i, quantite: 0 });
-  }
-  return coffre;
-}
-
-export function deleteCoffre(id) {
-  return pb.collection('coffres').delete(id); // cascade supprime ses emplacements
-}
-
-// ── Mouvement de stock : fixe la nouvelle quantité d'un emplacement (et
-// l'article s'il change), puis trace le delta dans l'historique. Deux appels
-// séquentiels (pas de transaction multi-collection côté client PocketBase) —
-// acceptable pour une app perso, à surveiller si ça pose problème un jour.
-export async function updateEmplacement({ emplacement, coffreNom, articleId, articleNom, previousQuantite, newQuantite }) {
-  await pb.collection('emplacements').update(emplacement, { article: articleId || null, quantite: newQuantite });
-
-  const delta = newQuantite - previousQuantite;
-  if (delta === 0) return;
-  await pb.collection('historique').create({
-    emplacement,
-    coffre_nom: coffreNom,
-    article_nom: articleNom || '(article retiré)',
-    type: delta > 0 ? 'ajout' : 'retrait',
-    quantite: Math.abs(delta),
-  });
-}
-
-// ── Historique ──
-export async function listHistorique(limit = 50) {
-  const res = await pb.collection('historique').getList(1, limit, { sort: '-created' });
-  return res.items;
+  return totals;
 }

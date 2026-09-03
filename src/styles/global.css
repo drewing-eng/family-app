@@ -155,6 +155,12 @@ h1, h2 { font-weight: 700; letter-spacing: -0.02em; }
 
 .panel { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 14px; overflow: hidden; }
 .panel-body { padding: 10px 18px 16px; }
+.panel-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 12px 18px; background: var(--surface2); border-bottom: 1px solid var(--border);
+}
+.panel-head-title { font-size: 0.92rem; font-weight: 700; letter-spacing: -0.01em; }
+.panel-head-actions { display: flex; align-items: center; gap: 10px; }
 
 .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid rgba(0, 0, 0, 0.06); }
 .row:first-child { border-top: none; }
@@ -162,18 +168,16 @@ h1, h2 { font-weight: 700; letter-spacing: -0.02em; }
 .row-note { font-size: 0.76rem; color: var(--text-muted); margin-top: 2px; font-weight: 400; display: block; }
 
 .badge { display: inline-flex; align-items: center; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; padding: 3px 10px; border-radius: var(--radius-pill); }
+.badge.red { background: var(--red-light); color: var(--red); }
 
 .gluco { display: inline-flex; align-items: center; gap: 5px; font-size: 0.72rem; font-weight: 600; padding: 3px 10px; border-radius: var(--radius-pill); }
 .gluco.eleve { background: var(--orange-light); color: var(--orange); }
 .gluco-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
 
-.history-list { display: flex; flex-direction: column; gap: 10px; }
-.history-entry {
-  background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow);
-  padding: 16px 18px; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+.unit-hint, .field-hint {
+  font-size: 0.76rem; color: var(--text-muted); font-style: italic; margin: 0 0 14px;
 }
-.history-entry-title { font-size: 0.95rem; font-weight: 600; letter-spacing: -0.01em; margin-bottom: 3px; }
-.history-entry-meta { font-size: 0.78rem; color: var(--text-muted); white-space: nowrap; }
+.field-hint { margin: -6px 0 0; }
 
 .btn-ghost {
   font-family: inherit; font-size: 0.85rem; font-weight: 600;

@@ -1,9 +1,17 @@
 import { userRole } from '../lib/pocketbase.js';
 import {
   listCatalogue, createCatalogueItem, updateCatalogueItem, deleteCatalogueItem,
-  listCoffres, listEmplacements, createCoffre, deleteCoffre, updateEmplacement,
-  listHistorique, isTension,
+  listPieces, createPiece, deletePiece,
+  listRangements, createRangement, deleteRangement,
+  listStocks, upsertStock, deleteStock,
+  totalsByArticle, isTension,
 } from '../lib/stocks.js';
+import { pb } from '../lib/pocketbase.js';
+
+// Pas d'unité structurée en base (décision produit) : juste un rappel dans
+// l'interface, à la saisie comme à l'affichage, pour que les nombres restent
+// compréhensibles sans avoir à définir une unité par article.
+const UNIT_HINT = 'Unité libre : g, kg, ml, L, pièces… reste cohérent pour un même article.';
 
 export async function renderStocksTab(container, tab, user) {
   const canWrite = ['admin', 'membre'].includes(userRole(user));
@@ -12,118 +20,183 @@ export async function renderStocksTab(container, tab, user) {
   container.innerHTML = '<div class="empty-state small"><p>Chargement…</p></div>';
   try {
     if (tab === 'catalogue') await renderCatalogue(container, canWrite, refresh);
-    else if (tab === 'journal') await renderJournal(container);
     else await renderGestion(container, canWrite, refresh);
   } catch (err) {
     container.innerHTML = `<div class="empty-state"><div class="ic">⚠️</div><p><strong>Erreur de chargement</strong></p><p class="small">${escapeHtml(err.message || 'Réessaie dans un instant.')}</p></div>`;
   }
 }
 
-/* ── Gestion ── */
+/* ── Gestion : Pièce → Rangement → articles présents ── */
 async function renderGestion(container, canWrite, refresh) {
-  const [coffres, catalogue] = await Promise.all([listCoffres(), listCatalogue()]);
-  const withSlots = await Promise.all(
-    coffres.map(async (coffre) => ({ coffre, slots: await listEmplacements(coffre.id) }))
-  );
+  const [catalogue, pieces, rangements, stocks] = await Promise.all([
+    listCatalogue(), listPieces(), listRangements(), listStocks(),
+  ]);
+  const totals = totalsByArticle(stocks);
 
   let html = '';
-  if (canWrite) {
-    html += `<div class="toolbar"><button class="btn-ghost" data-action="add-coffre">+ Ajouter un coffre</button></div>`;
+
+  // Tension globale : somme d'un article dans toute la maison vs sa cible catalogue.
+  const tenseItems = catalogue.filter((a) => isTension(totals.get(a.id) || 0, a.quantite_cible));
+  if (tenseItems.length) {
+    html += `<div class="panel"><div class="panel-head"><span class="panel-head-title">Articles en tension</span><span class="badge red">${tenseItems.length}</span></div><div class="panel-body" style="padding-top:8px;">`;
+    tenseItems.forEach((a) => {
+      html += `<div class="row"><span class="row-text">${escapeHtml(a.nom)}</span><span class="gluco eleve"><span class="gluco-dot"></span>${totals.get(a.id) || 0} / ${a.quantite_cible}</span></div>`;
+    });
+    html += '</div></div>';
   }
-  if (!withSlots.length) {
-    html += emptyState('📦', 'Aucun coffre', canWrite ? 'Ajoute ton premier coffre pour commencer.' : 'Aucun coffre créé pour l’instant.');
+
+  html += `<p class="unit-hint">${UNIT_HINT}</p>`;
+
+  if (canWrite) {
+    html += `<div class="toolbar"><button class="btn-ghost" data-action="add-piece">+ Ajouter une pièce</button></div>`;
+  }
+
+  if (!pieces.length) {
+    html += emptyState('🏠', 'Aucune pièce', canWrite ? 'Ajoute ta première pièce (Cuisine, Salle de bain…) pour commencer.' : 'Aucune pièce créée pour l’instant.');
   } else {
-    withSlots.forEach(({ coffre, slots }) => {
-      html += `<div class="section-eyebrow">${escapeHtml(coffre.nom)}${
-        canWrite ? ` <button class="link-danger" data-action="delete-coffre" data-id="${coffre.id}" data-nom="${escapeHtml(coffre.nom)}">Supprimer</button>` : ''
+    pieces.forEach((piece) => {
+      const piecesRangements = rangements.filter((r) => r.piece === piece.id);
+      html += `<div class="section-eyebrow">${escapeHtml(piece.nom)}${
+        canWrite
+          ? ` <button class="btn-ghost small" data-action="add-rangement" data-piece="${piece.id}" data-piece-nom="${escapeHtml(piece.nom)}">+ Rangement</button> <button class="link-danger" data-action="delete-piece" data-id="${piece.id}" data-nom="${escapeHtml(piece.nom)}">Supprimer</button>`
+          : ''
       }</div>`;
-      html += '<div class="panel"><div class="panel-body" style="padding-top:8px;">';
-      slots.forEach((slot) => {
-        const article = slot.expand?.article;
-        const tension = article && isTension(slot.quantite, article.quantite_max);
-        const sub = article
-          ? tension
-            ? '<span class="gluco eleve"><span class="gluco-dot"></span>Stock en tension</span>'
-            : `<span class="row-note">${slot.quantite} / ${article.quantite_max}</span>`
-          : '<span class="row-note" style="font-style:italic;">Vide</span>';
-        html += `<div class="row">
-          <div><div class="row-text">${article ? escapeHtml(article.nom) : `Emplacement ${slot.index}`}</div>${sub}</div>
-          ${
-            canWrite
-              ? `<button class="btn-ghost small" data-action="edit-slot" data-id="${slot.id}" data-coffre="${escapeHtml(coffre.nom)}" data-index="${slot.index}" data-article="${article ? article.id : ''}" data-qty="${slot.quantite}">${article ? 'Ajuster' : 'Assigner'}</button>`
-              : ''
-          }
-        </div>`;
+
+      if (!piecesRangements.length) {
+        html += `<p class="row-note" style="margin-bottom:14px;">Aucun rangement dans cette pièce.</p>`;
+      }
+
+      piecesRangements.forEach((rangement) => {
+        const lignes = stocks.filter((s) => s.rangement === rangement.id);
+        html += `<div class="panel">
+          <div class="panel-head">
+            <span class="panel-head-title">${escapeHtml(rangement.nom)}</span>
+            ${
+              canWrite
+                ? `<span class="panel-head-actions"><button class="btn-ghost small" data-action="add-stock" data-rangement="${rangement.id}" data-rangement-nom="${escapeHtml(rangement.nom)}">+ Article</button><button class="link-danger" data-action="delete-rangement" data-id="${rangement.id}" data-nom="${escapeHtml(rangement.nom)}">Supprimer</button></span>`
+                : ''
+            }
+          </div>
+          <div class="panel-body" style="padding-top:8px;">`;
+        if (!lignes.length) {
+          html += `<p class="row-note">Vide.</p>`;
+        }
+        lignes.forEach((ligne) => {
+          const article = ligne.expand?.article;
+          html += `<div class="row">
+            <div><div class="row-text">${article ? escapeHtml(article.nom) : '(article supprimé)'}</div><div class="row-note">${ligne.quantite}</div></div>
+            ${
+              canWrite
+                ? `<span class="panel-head-actions"><button class="btn-ghost small" data-action="edit-stock" data-id="${ligne.id}" data-nom="${article ? escapeHtml(article.nom) : ''}" data-qty="${ligne.quantite}">Ajuster</button><button class="link-danger" data-action="delete-stock" data-id="${ligne.id}" data-nom="${article ? escapeHtml(article.nom) : ''}">Retirer</button></span>`
+                : ''
+            }
+          </div>`;
+        });
+        html += '</div></div>';
       });
-      html += '</div></div>';
     });
   }
 
   container.innerHTML = html;
   container.onclick = (e) => {
-    if (e.target.closest('[data-action="add-coffre"]')) {
-      dialogAddCoffre(refresh);
+    if (e.target.closest('[data-action="add-piece"]')) {
+      dialogAddPiece(refresh);
       return;
     }
-    const delBtn = e.target.closest('[data-action="delete-coffre"]');
-    if (delBtn) {
-      const nom = delBtn.dataset.nom;
-      if (confirm(`Supprimer le coffre « ${nom} » et tous ses emplacements ?`)) {
-        deleteCoffre(delBtn.dataset.id).then(refresh).catch((err) => alert(err.message));
+    const delPiece = e.target.closest('[data-action="delete-piece"]');
+    if (delPiece) {
+      if (confirm(`Supprimer la pièce « ${delPiece.dataset.nom} » et tous ses rangements ?`)) {
+        deletePiece(delPiece.dataset.id).then(refresh).catch((err) => alert(err.message));
       }
       return;
     }
-    const editBtn = e.target.closest('[data-action="edit-slot"]');
-    if (editBtn) {
-      const d = editBtn.dataset;
-      dialogEditSlot({ id: d.id, coffreNom: d.coffre, index: d.index, articleId: d.article, qty: Number(d.qty) }, catalogue, refresh);
+    const addRangement = e.target.closest('[data-action="add-rangement"]');
+    if (addRangement) {
+      dialogAddRangement({ pieceId: addRangement.dataset.piece, pieceNom: addRangement.dataset.pieceNom }, refresh);
+      return;
+    }
+    const delRangement = e.target.closest('[data-action="delete-rangement"]');
+    if (delRangement) {
+      if (confirm(`Supprimer le rangement « ${delRangement.dataset.nom} » et son contenu ?`)) {
+        deleteRangement(delRangement.dataset.id).then(refresh).catch((err) => alert(err.message));
+      }
+      return;
+    }
+    const addStock = e.target.closest('[data-action="add-stock"]');
+    if (addStock) {
+      const rangementId = addStock.dataset.rangement;
+      const already = new Set(stocks.filter((s) => s.rangement === rangementId).map((s) => s.article));
+      dialogAddStock({ rangementId, rangementNom: addStock.dataset.rangementNom, catalogue: catalogue.filter((a) => !already.has(a.id)) }, refresh);
+      return;
+    }
+    const editStock = e.target.closest('[data-action="edit-stock"]');
+    if (editStock) {
+      dialogEditStock({ id: editStock.dataset.id, nom: editStock.dataset.nom, qty: Number(editStock.dataset.qty) }, refresh);
+      return;
+    }
+    const delStock = e.target.closest('[data-action="delete-stock"]');
+    if (delStock) {
+      if (confirm(`Retirer « ${delStock.dataset.nom} » de ce rangement ?`)) {
+        deleteStock(delStock.dataset.id).then(refresh).catch((err) => alert(err.message));
+      }
     }
   };
 }
 
-function dialogAddCoffre(onDone) {
-  openDialog('Ajouter un coffre', `
-    <label class="field"><span>Nom</span><input type="text" name="nom" required autofocus /></label>
-    <label class="field"><span>Nombre d'emplacements</span><input type="number" name="nb_emplacements" min="1" max="50" required value="6" /></label>
+function dialogAddPiece(onDone) {
+  openDialog('Ajouter une pièce', `
+    <label class="field"><span>Nom</span><input type="text" name="nom" required autofocus placeholder="Cuisine, Salle de bain, Garage…" /></label>
   `, {
     onSubmit: async (fd) => {
       const nom = fd.get('nom').trim();
       if (!nom) throw new Error('Le nom est requis.');
-      await createCoffre({ nom, nb_emplacements: Number(fd.get('nb_emplacements')) });
+      await createPiece(nom);
       onDone();
     },
   });
 }
 
-function dialogEditSlot({ id, coffreNom, index, articleId, qty }, catalogue, onDone) {
-  const options = catalogue
-    .map((a) => `<option value="${a.id}" ${a.id === articleId ? 'selected' : ''}>${escapeHtml(a.nom)} (max ${a.quantite_max})</option>`)
-    .join('');
-  openDialog(`Emplacement ${index} · ${coffreNom}`, `
-    <label class="field"><span>Article</span>
-      <select name="article">
-        <option value="">— Vider l'emplacement —</option>
-        ${options}
-      </select>
-    </label>
-    <label class="field"><span>Quantité</span><input type="number" name="quantite" min="0" required value="${qty}" /></label>
+function dialogAddRangement({ pieceId, pieceNom }, onDone) {
+  openDialog(`Ajouter un rangement · ${pieceNom}`, `
+    <label class="field"><span>Nom</span><input type="text" name="nom" required autofocus placeholder="Frigo, Placard du haut, Étagère…" /></label>
   `, {
     onSubmit: async (fd) => {
-      const articleId2 = fd.get('article') || '';
-      const article = catalogue.find((a) => a.id === articleId2);
-      let newQty = Number(fd.get('quantite'));
-      if (!articleId2) newQty = 0;
-      if (article && newQty > article.quantite_max) {
-        throw new Error(`La quantité dépasse le maximum du catalogue (${article.quantite_max}).`);
-      }
-      await updateEmplacement({
-        emplacement: id,
-        coffreNom,
-        articleId: articleId2 || null,
-        articleNom: article?.nom,
-        previousQuantite: qty,
-        newQuantite: newQty,
-      });
+      const nom = fd.get('nom').trim();
+      if (!nom) throw new Error('Le nom est requis.');
+      await createRangement({ nom, piece: pieceId });
+      onDone();
+    },
+  });
+}
+
+function dialogAddStock({ rangementId, rangementNom, catalogue }, onDone) {
+  if (!catalogue.length) {
+    alert('Tous les articles du catalogue sont déjà dans ce rangement (ou le catalogue est vide).');
+    return;
+  }
+  const options = catalogue.map((a) => `<option value="${a.id}">${escapeHtml(a.nom)}</option>`).join('');
+  openDialog(`Ajouter un article · ${rangementNom}`, `
+    <label class="field"><span>Article</span><select name="article" required>${options}</select></label>
+    <label class="field"><span>Quantité</span><input type="number" name="quantite" min="0" step="any" required value="1" /></label>
+    <p class="field-hint">${UNIT_HINT}</p>
+  `, {
+    onSubmit: async (fd) => {
+      const article = fd.get('article');
+      const quantite = Number(fd.get('quantite'));
+      await upsertStock({ rangement: rangementId, article, quantite });
+      onDone();
+    },
+  });
+}
+
+function dialogEditStock({ id, nom, qty }, onDone) {
+  openDialog(`Ajuster · ${nom}`, `
+    <label class="field"><span>Quantité</span><input type="number" name="quantite" min="0" step="any" required value="${qty}" autofocus /></label>
+    <p class="field-hint">${UNIT_HINT}</p>
+  `, {
+    onSubmit: async (fd) => {
+      const quantite = Number(fd.get('quantite'));
+      await pb.collection('stocks').update(id, { quantite });
       onDone();
     },
   });
@@ -137,6 +210,8 @@ async function renderCatalogue(container, canWrite, refresh) {
   if (canWrite) {
     html += `<div class="toolbar"><button class="btn-ghost" data-action="add-article">+ Ajouter un article</button></div>`;
   }
+  html += `<p class="unit-hint">${UNIT_HINT}</p>`;
+
   if (!items.length) {
     html += emptyState('📖', 'Catalogue vide', canWrite ? 'Ajoute le premier article du catalogue.' : 'Aucun article pour l’instant.');
   } else {
@@ -144,11 +219,11 @@ async function renderCatalogue(container, canWrite, refresh) {
     items.forEach((item) => {
       html += `<div class="row">
         <span class="row-text">${escapeHtml(item.nom)}</span>
-        <span style="display:flex;align-items:center;gap:10px;">
-          <span class="row-note">max ${item.quantite_max}</span>
+        <span class="panel-head-actions">
+          <span class="row-note">cible : ${item.quantite_cible}</span>
           ${
             canWrite
-              ? `<button class="btn-ghost small" data-action="edit-article" data-id="${item.id}" data-nom="${escapeHtml(item.nom)}" data-max="${item.quantite_max}">Modifier</button><button class="link-danger" data-action="delete-article" data-id="${item.id}" data-nom="${escapeHtml(item.nom)}">Supprimer</button>`
+              ? `<button class="btn-ghost small" data-action="edit-article" data-id="${item.id}" data-nom="${escapeHtml(item.nom)}" data-cible="${item.quantite_cible}">Modifier</button><button class="link-danger" data-action="delete-article" data-id="${item.id}" data-nom="${escapeHtml(item.nom)}">Supprimer</button>`
               : ''
           }
         </span>
@@ -165,13 +240,13 @@ async function renderCatalogue(container, canWrite, refresh) {
     }
     const editBtn = e.target.closest('[data-action="edit-article"]');
     if (editBtn) {
-      dialogArticle({ id: editBtn.dataset.id, nom: editBtn.dataset.nom, max: editBtn.dataset.max }, refresh);
+      dialogArticle({ id: editBtn.dataset.id, nom: editBtn.dataset.nom, cible: editBtn.dataset.cible }, refresh);
       return;
     }
     const delBtn = e.target.closest('[data-action="delete-article"]');
     if (delBtn) {
       const nom = delBtn.dataset.nom;
-      if (confirm(`Supprimer l'article « ${nom} » du catalogue ?`)) {
+      if (confirm(`Supprimer l'article « ${nom} » du catalogue (et de tous les rangements où il apparaît) ?`)) {
         deleteCatalogueItem(delBtn.dataset.id).then(refresh).catch((err) => alert(err.message));
       }
     }
@@ -181,42 +256,18 @@ async function renderCatalogue(container, canWrite, refresh) {
 function dialogArticle(existing, onDone) {
   openDialog(existing ? "Modifier l'article" : 'Ajouter un article', `
     <label class="field"><span>Nom</span><input type="text" name="nom" required autofocus value="${existing ? escapeHtml(existing.nom) : ''}" /></label>
-    <label class="field"><span>Quantité maximum par emplacement</span><input type="number" name="quantite_max" min="1" required value="${existing ? existing.max : 1}" /></label>
+    <label class="field"><span>Quantité cible (stock plein, toute la maison)</span><input type="number" name="quantite_cible" min="1" step="any" required value="${existing ? existing.cible : 1}" /></label>
+    <p class="field-hint">${UNIT_HINT}</p>
   `, {
     onSubmit: async (fd) => {
       const nom = fd.get('nom').trim();
-      const quantite_max = Number(fd.get('quantite_max'));
+      const quantite_cible = Number(fd.get('quantite_cible'));
       if (!nom) throw new Error('Le nom est requis.');
-      if (existing) await updateCatalogueItem(existing.id, { nom, quantite_max });
-      else await createCatalogueItem({ nom, quantite_max });
+      if (existing) await updateCatalogueItem(existing.id, { nom, quantite_cible });
+      else await createCatalogueItem({ nom, quantite_cible });
       onDone();
     },
   });
-}
-
-/* ── Journal ── */
-async function renderJournal(container) {
-  const entries = await listHistorique();
-  if (!entries.length) {
-    container.innerHTML = emptyState('📋', 'Aucun mouvement', 'Les ajouts et retraits de stock apparaîtront ici.');
-    container.onclick = null;
-    return;
-  }
-  let html = '<div class="history-list">';
-  entries.forEach((e) => {
-    const sign = e.type === 'ajout' ? '+' : '−';
-    const when = new Date(e.created).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-    html += `<div class="history-entry">
-      <div>
-        <div class="history-entry-title">${e.type === 'ajout' ? 'Ajout' : 'Retrait'} · ${escapeHtml(e.article_nom)} (${sign}${e.quantite})</div>
-        <div class="history-entry-meta">${escapeHtml(e.coffre_nom)}</div>
-      </div>
-      <div class="history-entry-meta">${when}</div>
-    </div>`;
-  });
-  html += '</div>';
-  container.innerHTML = html;
-  container.onclick = null;
 }
 
 /* ── Dialogue générique (élément <dialog> natif) ── */
