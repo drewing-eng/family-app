@@ -6,7 +6,12 @@ des stocks et, plus tard, la gestion financière.
 
 Documents de référence produits pendant le cadrage (accès selon permissions) :
 - PRD : https://claude.ai/code/artifact/04789319-d6fc-4878-b962-ec90cd638fae
-- Aperçu cliquable (sidebar/wall, modules, thèmes) : https://claude.ai/code/artifact/af15fa9d-90c6-47bf-abeb-66219a709896
+- Aperçu cliquable initial (sidebar/wall, modules, thèmes — **design
+  obsolète**, voir ci-dessous) : https://claude.ai/code/artifact/af15fa9d-90c6-47bf-abeb-66219a709896
+- **Maquette de référence actuelle (cliquable, source de vérité visuelle) :**
+  https://claude.ai/code/artifact/441c2f20-8e43-4697-96d3-fe904ae647ce —
+  toute nouvelle interface doit d'abord y être comparée avant d'être codée ;
+  détail complet des jetons et composants dans `design-systeme.md`.
 
 ## Commandes
 
@@ -180,41 +185,54 @@ les 4 collections :
 
 ## Design system
 
-**Repris à l'identique de family-menu, branche `main`
-(`public/style.css`).** Voir `src/styles/tokens.css` pour les valeurs exactes.
+⚠️ **Le design a changé de direction après le chantier 3 — ce qui suit
+remplace toute description précédente d'un design "repris à l'identique de
+family-menu".** L'app ne partage plus la charte de family-menu (fond blanc
+uni, accent indigo `#5b5bd4`, aucun mode chaleureux) : sur demande explicite
+de l'utilisateur, GAUTIER Family a sa **propre** identité visuelle,
+volontairement plus chaleureuse, avec une couleur d'accent différente par
+module. `src/styles/tokens.css` est encore sur l'ancienne base family-menu
+et **doit être réécrit** pour correspondre à ce qui suit avant tout nouveau
+développement d'interface (pas encore fait — voir "Points encore ouverts").
 
-⚠️ **Piège déjà rencontré pendant le cadrage** : le dépôt family-menu a
-plusieurs branches avec des designs différents et obsolètes (un thème
-crème/terracotta/Georgia serif, abandonné). Si le design de family-menu doit
-être re-consulté, **toujours vérifier la branche `main` en premier** — ne pas
-se fier à la première branche trouvée.
+**Référence complète (palette, typo, formes, composants, navigation,
+tiroir) : voir `design-systeme.md` à la racine du dépôt.** Ce fichier-ci ne
+donne qu'un résumé ; en cas de divergence, `design-systeme.md` fait foi, et
+la maquette cliquable qu'il référence fait foi sur les deux.
 
-Résumé du design réel :
-- Fond blanc, texte quasi-noir (`#111110`), accent indigo (`#5b5bd4`).
-- Typo système sans-serif, grasse sur les titres, tracking négatif serré
-  (`-0.02em` à `-0.03em`) — **aucune police serif nulle part**.
-- Cartes : coins très arrondis (18px), ombre douce, **aucune bordure**.
-- Navigation : bouton actif en pilule noire pleine (`#111110` bg, blanc),
-  reste en texte gris (`--text-muted`). Repris pour `.side-item.active` et
-  `.tab-btn.active` (sous-onglets de module) via les tokens
-  `--nav-active-bg`/`--nav-active-fg` (qui s'inversent en sombre).
-- Cartes "repas" Midi (vert pâle `--midi-bg`) / Soir (violet pâle
-  `--soir-bg`) — vocabulaire réservé pour le widget "menu du jour" du Wall
-  (chantier 4, pas encore construit).
-- Badges et indicateurs de statut : pilules colorées (`--accent-light`,
-  `--green-light`, `--orange-light`, `--red-light`, `--blue-light`). Le badge
-  "Stock en tension" (module Stocks) réutilise ce vocabulaire (`.gluco.eleve`).
+Résumé très court :
+- Police **Manrope** (Google Fonts), plus aucune police système.
+- Couleur d'accent **par module**, pas une seule couleur pour toute l'app :
+  bleu `#384CEA` (Accueil/Menus), orange `#C2660C` (Stocks), vert `#1F8F55`
+  (Finances, à venir) — posée via un attribut `data-module` qui redéfinit
+  trois jetons CSS (`--accent`, `--accent-soft`, `--canvas`), lus par tout
+  le reste de l'UI.
+- Rayons **généreux mais toujours rectangulaires** (jamais de pilule pleine
+  sur un bouton/badge/nav — testé puis explicitement refusé), ombres quasi
+  jamais utilisées, bordures quasi absentes (séparation par le fond, pas par
+  un contour).
+- Toutes les pop-up et `confirm()` natifs sont remplacés par un **tiroir**
+  qui pousse le contenu sur desktop (carte flottante) et devient un
+  **bottom-sheet** par-dessus le contenu sur mobile.
+- Navigation mobile : Accueil est un **hub** (widgets + tuiles de modules),
+  un module ouvert a une **croix persistante** (ferme vers le hub) et, si on
+  descend d'un niveau, une **flèche de retour** séparée — jamais les deux au
+  même endroit (bug rencontré et corrigé).
+- **Aucun emoji dans l'interface**, uniquement des icônes trait SVG
+  (`src/lib/icons.js`, style Feather/Lucide).
 
-**Mode sombre** — n'existe pas dans family-menu (family-menu est 100% clair).
-C'est une extension propre à GAUTIER Family, dérivée manuellement des tokens
-clairs (voir le bloc `[data-theme="dark"]` dans `tokens.css`). Toujours
+**Mode sombre** — pas encore réévalué depuis le changement de direction
+visuelle (l'ancien bloc `[data-theme="dark"]` de `tokens.css` était dérivé
+de l'ancienne base family-menu). À refaire en même temps que la réécriture
+de `tokens.css`. Ce qui reste vrai quel que soit le design : toujours
 **ouvrir l'app en clair par défaut**, jamais suivre `prefers-color-scheme`
 silencieusement au premier chargement — l'inverse a produit un rendu jugé
-"horrible" pendant le cadrage. Implémenté au chantier 2 : `src/lib/theme.js`
-pose toujours `data-theme` explicitement (jamais l'attribut absent), et
-`main.js` applique le thème du profil PocketBase dès qu'il est connu ; le
-choix est persisté via `updateTheme()` (`pocketbase.js`) sur le champ
-`theme` de l'utilisateur.
+"horrible" pendant le cadrage initial. `src/lib/theme.js` pose toujours
+`data-theme` explicitement (jamais l'attribut absent), et `main.js`
+applique le thème du profil PocketBase dès qu'il est connu ; le choix est
+persisté via `updateTheme()` (`pocketbase.js`) sur le champ `theme` de
+l'utilisateur — cette mécanique-là ne change pas, seules les valeurs de
+couleur sous-jacentes seront à refaire.
 
 ⚠️ **Pièges CSS rencontrés (à garder en tête pour la suite)** :
 - Un conteneur flex à deux mises en page (sidebar+contenu sur desktop,
@@ -321,6 +339,12 @@ pour le détail des collections et de leurs règles d'API par rôle.
 
 ## Points encore ouverts
 
+- **`src/styles/tokens.css` et `global.css` pas encore réécrits pour le
+  nouveau design system** — voir `design-systeme.md` et la maquette
+  cliquable qu'il référence. Tant que ce n'est pas fait, l'app déployée
+  tourne encore sur l'ancienne base visuelle family-menu ; ne pas construire
+  de nouvel écran sur les classes/tokens actuels de `global.css` sans
+  d'abord les faire correspondre à la maquette.
 - **Collections Stocks pas encore créées côté PocketBase** — schéma exact
   dans "Modèle de données PocketBase" ci-dessus, à faire par le superadmin
   avant de pouvoir tester le module en conditions réelles.
