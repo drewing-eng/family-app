@@ -1,4 +1,4 @@
-const CACHE = 'gautier-family-shell-v1';
+const CACHE = 'gautier-family-shell-v2';
 const SHELL = ['/', '/manifest.webmanifest'];
 
 self.addEventListener('install', (e) => {
@@ -13,6 +13,10 @@ self.addEventListener('activate', (e) => {
   self.clients.claim();
 });
 
+// Réseau d'abord, cache en repli (hors ligne uniquement) : chaque déploiement
+// doit être visible dès le premier chargement en ligne, jamais une version
+// mise en cache lors d'un passage précédent (bug constaté : après un push,
+// le premier rechargement affichait encore l'ancien shell).
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
   const url = new URL(e.request.url);
@@ -20,14 +24,11 @@ self.addEventListener('fetch', (e) => {
   if (url.pathname === '/config.js') return; // config runtime, toujours dynamique
 
   e.respondWith(
-    caches.match(e.request).then((cached) => {
-      const network = fetch(e.request)
-        .then((res) => {
-          if (res.ok) caches.open(CACHE).then((c) => c.put(e.request, res.clone()));
-          return res;
-        })
-        .catch(() => cached);
-      return cached || network;
-    })
+    fetch(e.request)
+      .then((res) => {
+        if (res.ok) caches.open(CACHE).then((c) => c.put(e.request, res.clone()));
+        return res;
+      })
+      .catch(() => caches.match(e.request))
   );
 });
