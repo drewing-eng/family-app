@@ -1,13 +1,14 @@
 import { pb, logout, userRole, userApps, updateTheme } from '../lib/pocketbase.js';
 import { applyTheme, currentThemeAttr } from '../lib/theme.js';
 import { renderStocksTab } from './stocks.js';
+import { icon } from '../lib/icons.js';
 
 const ROLE_LABEL = { admin: 'Admin', membre: 'Membre', invite: 'Invité' };
 
 const ALL_MODULES = [
-  { id: 'wall', icon: '🏠', label: 'Accueil', always: true },
-  { id: 'menus', icon: '🗓', label: 'Menus' },
-  { id: 'stocks', icon: '📦', label: 'Stocks' },
+  { id: 'wall', icon: 'home', label: 'Accueil', always: true },
+  { id: 'menus', icon: 'calendar', label: 'Menus' },
+  { id: 'stocks', icon: 'box', label: 'Stocks' },
 ];
 
 const STOCK_TABS = [
@@ -52,15 +53,15 @@ export function renderShell(root) {
             <div class="r">${ROLE_LABEL[userRole(user)] || 'Invité'}</div>
           </div>
           <button class="icon-btn" id="themeBtnDesktop" title="Changer de thème"></button>
-          <button class="icon-btn" id="logoutBtnDesktop" title="Se déconnecter">⏻</button>
+          <button class="icon-btn" id="logoutBtnDesktop" title="Se déconnecter">${icon('logout')}</button>
         </div>
       </aside>
 
       <div class="mobile-header">
-        <button class="back" id="mobileBack" hidden aria-label="Retour à l'accueil">←</button>
+        <button class="back" id="mobileBack" hidden aria-label="Retour à l'accueil">${icon('arrow-left')}</button>
         <h1 id="mobileTitle">GAUTIER Family</h1>
         <button class="icon-btn" id="themeBtnMobile" title="Changer de thème"></button>
-        <button class="icon-btn" id="logoutBtnMobile" title="Se déconnecter">⏻</button>
+        <button class="icon-btn" id="logoutBtnMobile" title="Se déconnecter">${icon('logout')}</button>
       </div>
 
       <main class="main">
@@ -91,10 +92,10 @@ export function renderShell(root) {
     sideNav.innerHTML = modules
       .map(
         (m) =>
-          `<button class="side-item${m.id === state.module ? ' active' : ''}" data-nav="${m.id}"><span class="ic">${m.icon}</span>${m.label}</button>`
+          `<button class="side-item${m.id === state.module ? ' active' : ''}" data-nav="${m.id}"><span class="ic">${icon(m.icon)}</span>${m.label}</button>`
       )
       .join('') +
-      `<button class="side-item disabled" disabled><span class="ic">💶</span>Finances<span class="soon">bientôt</span></button>`;
+      `<button class="side-item disabled" disabled><span class="ic">${icon('coin')}</span>Finances<span class="soon">bientôt</span></button>`;
 
     const info = moduleInfo(state.module);
     paneTitle.textContent = info.label;
@@ -104,7 +105,7 @@ export function renderShell(root) {
       mobileTitle.textContent = 'GAUTIER Family';
     } else {
       mobileBack.hidden = false;
-      mobileTitle.textContent = `${info.icon} ${info.label}`;
+      mobileTitle.textContent = info.label;
     }
 
     if (state.module === 'stocks') {
@@ -172,9 +173,9 @@ export function renderShell(root) {
   });
 
   function syncThemeButtons() {
-    const icon = currentThemeAttr() === 'sombre' ? '☾' : '☀';
-    root.querySelector('#themeBtnDesktop').textContent = icon;
-    root.querySelector('#themeBtnMobile').textContent = icon;
+    const svg = currentThemeAttr() === 'sombre' ? icon('moon') : icon('sun');
+    root.querySelector('#themeBtnDesktop').innerHTML = svg;
+    root.querySelector('#themeBtnMobile').innerHTML = svg;
   }
 
   syncThemeButtons();
@@ -184,7 +185,7 @@ export function renderShell(root) {
 function renderContent(moduleId, modules) {
   if (moduleId === 'wall') return renderWall(modules);
   if (moduleId === 'menus') {
-    return emptyState('🔗', 'Connexion à créer', "L'URL de production de family-menu n'a pas encore été renseignée. Une fois fournie, cet espace affichera l'application en iframe.");
+    return emptyState('calendar', 'Connexion à créer', "L'URL de production de family-menu n'a pas encore été renseignée. Une fois fournie, cet espace affichera l'application en iframe.");
   }
   return '';
 }
@@ -203,15 +204,15 @@ function renderWall(modules) {
   if (tiles.length) {
     html += '<div class="mobile-modules"><div class="section-eyebrow">Modules</div><div class="tiles">';
     tiles.forEach((m) => {
-      html += `<button class="tile" data-goto="${m.id}"><span class="ic">${m.icon}</span><span class="lbl">${m.label}</span></button>`;
+      html += `<button class="tile" data-goto="${m.id}"><span class="ic">${icon(m.icon)}</span><span class="lbl">${m.label}</span></button>`;
     });
     html += '</div></div>';
   }
   return html;
 }
 
-function emptyState(icon, title, text) {
-  return `<div class="empty-state"><div class="ic">${icon}</div><p><strong>${escapeHtml(title)}</strong></p><p class="small">${escapeHtml(text)}</p></div>`;
+function emptyState(iconName, title, text) {
+  return `<div class="empty-state"><div class="ic">${icon(iconName)}</div><p><strong>${escapeHtml(title)}</strong></p><p class="small">${escapeHtml(text)}</p></div>`;
 }
 
 function escapeHtml(str) {

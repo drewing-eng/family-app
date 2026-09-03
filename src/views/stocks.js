@@ -7,6 +7,7 @@ import {
   totalsByArticle, isTension,
 } from '../lib/stocks.js';
 import { pb } from '../lib/pocketbase.js';
+import { icon } from '../lib/icons.js';
 
 // Pas d'unité structurée en base (décision produit) : juste un rappel dans
 // l'interface, à la saisie comme à l'affichage, pour que les nombres restent
@@ -22,7 +23,7 @@ export async function renderStocksTab(container, tab, user) {
     if (tab === 'catalogue') await renderCatalogue(container, canWrite, refresh);
     else await renderGestion(container, canWrite, refresh);
   } catch (err) {
-    container.innerHTML = `<div class="empty-state"><div class="ic">⚠️</div><p><strong>Erreur de chargement</strong></p><p class="small">${escapeHtml(err.message || 'Réessaie dans un instant.')}</p></div>`;
+    container.innerHTML = `<div class="empty-state"><div class="ic">${icon('alert-triangle')}</div><p><strong>Erreur de chargement</strong></p><p class="small">${escapeHtml(err.message || 'Réessaie dans un instant.')}</p></div>`;
   }
 }
 
@@ -52,7 +53,7 @@ async function renderGestion(container, canWrite, refresh) {
   }
 
   if (!pieces.length) {
-    html += emptyState('🏠', 'Aucune pièce', canWrite ? 'Ajoute ta première pièce (Cuisine, Salle de bain…) pour commencer.' : 'Aucune pièce créée pour l’instant.');
+    html += emptyState('door', 'Aucune pièce', canWrite ? 'Ajoute ta première pièce (Cuisine, Salle de bain…) pour commencer.' : 'Aucune pièce créée pour l’instant.');
   } else {
     pieces.forEach((piece) => {
       const piecesRangements = rangements.filter((r) => r.piece === piece.id);
@@ -213,7 +214,7 @@ async function renderCatalogue(container, canWrite, refresh) {
   html += `<p class="unit-hint">${UNIT_HINT}</p>`;
 
   if (!items.length) {
-    html += emptyState('📖', 'Catalogue vide', canWrite ? 'Ajoute le premier article du catalogue.' : 'Aucun article pour l’instant.');
+    html += emptyState('book', 'Catalogue vide', canWrite ? 'Ajoute le premier article du catalogue.' : 'Aucun article pour l’instant.');
   } else {
     html += '<div class="panel"><div class="panel-body" style="padding-top:8px;">';
     items.forEach((item) => {
@@ -309,8 +310,8 @@ function openDialog(title, bodyHtml, { onSubmit, submitLabel = 'Enregistrer' } =
   return dlg;
 }
 
-function emptyState(icon, title, text) {
-  return `<div class="empty-state"><div class="ic">${icon}</div><p><strong>${escapeHtml(title)}</strong></p><p class="small">${escapeHtml(text)}</p></div>`;
+function emptyState(iconName, title, text) {
+  return `<div class="empty-state"><div class="ic">${icon(iconName)}</div><p><strong>${escapeHtml(title)}</strong></p><p class="small">${escapeHtml(text)}</p></div>`;
 }
 
 function escapeHtml(str) {

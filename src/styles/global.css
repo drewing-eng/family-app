@@ -15,6 +15,11 @@ input { font-family: inherit; font-size: inherit; }
 h1, h2 { font-weight: 700; letter-spacing: -0.02em; }
 #app { min-height: 100vh; }
 
+/* Icônes trait (voir src/lib/icons.js) : dimensionnées en em pour suivre le
+   font-size de leur conteneur (.ic, .icon-btn, .back…), comme le faisaient
+   les emojis qu'elles remplacent — aucun changement de layout par ailleurs. */
+.ic-svg { width: 1em; height: 1em; display: block; }
+
 /* ══════════════ LOGIN ══════════════ */
 .login-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
 .login-card {
@@ -56,7 +61,7 @@ h1, h2 { font-weight: 700; letter-spacing: -0.02em; }
   background: none; color: var(--text-muted); text-align: left;
   font-family: inherit; font-size: 0.9rem; font-weight: 500; padding: 10px 16px;
 }
-.side-item .ic { font-size: 1rem; }
+.side-item .ic { font-size: 1rem; display: inline-flex; align-items: center; }
 .side-item:hover:not(:disabled) { color: var(--text); background: var(--surface2); }
 .side-item.active { color: var(--nav-active-fg); background: var(--nav-active-bg); font-weight: 600; }
 .side-item:disabled { opacity: 0.45; cursor: default; }
@@ -67,7 +72,7 @@ h1, h2 { font-weight: 700; letter-spacing: -0.02em; }
 .side-profile .who { flex: 1; min-width: 0; overflow: hidden; }
 .side-profile .who .n { font-size: 0.83rem; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .side-profile .who .r { font-size: 0.66rem; color: var(--text-muted); }
-.icon-btn { border: none; background: none; color: var(--text-muted); font-size: 0.95rem; padding: 4px; flex-shrink: 0; }
+.icon-btn { border: none; background: none; color: var(--text-muted); font-size: 0.95rem; padding: 4px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; }
 .icon-btn:hover { color: var(--accent); }
 
 .mobile-header {
@@ -75,7 +80,7 @@ h1, h2 { font-weight: 700; letter-spacing: -0.02em; }
   background: var(--surface); border-bottom: 1px solid var(--border);
 }
 .mobile-header h1 { font-size: 1.25rem; letter-spacing: -0.02em; color: var(--accent); flex: 1; }
-.mobile-header .back { border: none; background: var(--surface2); color: var(--text); width: 30px; height: 30px; border-radius: 50%; font-size: 0.9rem; flex-shrink: 0; }
+.mobile-header .back { border: none; background: var(--surface2); color: var(--text); width: 30px; height: 30px; border-radius: 50%; font-size: 0.85rem; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; }
 
 .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
 .pane-title { display: none; padding: 22px 28px 6px; }
@@ -140,12 +145,12 @@ h1, h2 { font-weight: 700; letter-spacing: -0.02em; }
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
   color: var(--text); text-align: center; padding: 10px;
 }
-.tile .ic { font-size: 1.9rem; }
+.tile .ic { font-size: 1.9rem; display: inline-flex; }
 .tile .lbl { font-size: 0.88rem; font-weight: 700; letter-spacing: -0.01em; }
 
 .empty-state { text-align: center; padding: 54px 20px; color: var(--text-muted); }
 .empty-state.small { padding: 20px; }
-.empty-state .ic { font-size: 1.6rem; margin-bottom: 10px; }
+.empty-state .ic { font-size: 1.6rem; margin-bottom: 10px; display: inline-flex; justify-content: center; width: 100%; }
 .empty-state p { margin-bottom: 4px; font-size: 0.95rem; }
 .empty-state p strong { color: var(--text); }
 .empty-state p.small { font-size: 0.8rem; }
