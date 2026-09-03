@@ -14,6 +14,11 @@ import { icon } from '../lib/icons.js';
 // compréhensibles sans avoir à définir une unité par article.
 const UNIT_HINT = 'Unité libre : g, kg, ml, L, pièces… reste cohérent pour un même article.';
 
+// Rangement actuellement ouvert en vue détail (liste → détail, comme
+// Chest_gestion) ; persiste tant qu'on reste sur l'onglet Stocks, réinitialisé
+// seulement via le bouton Retour ou si le rangement n'existe plus.
+let currentDetailRangement = null;
+
 export async function renderStocksTab(container, tab, user) {
   const canWrite = ['admin', 'membre'].includes(userRole(user));
   const refresh = () => renderStocksTab(container, tab, user);
@@ -27,13 +32,24 @@ export async function renderStocksTab(container, tab, user) {
   }
 }
 
-/* ── Gestion : Pièce → Rangement → articles présents ── */
+/* ── Gestion : liste (Pièce → Rangements) → détail (articles d'un rangement) ── */
 async function renderGestion(container, canWrite, refresh) {
   const [catalogue, pieces, rangements, stocks] = await Promise.all([
     listCatalogue(), listPieces(), listRangements(), listStocks(),
   ]);
-  const totals = totalsByArticle(stocks);
 
+  const detail = currentDetailRangement && rangements.find((r) => r.id === currentDetailRangement);
+  if (currentDetailRangement && !detail) currentDetailRangement = null;
+
+  if (detail) {
+    renderGestionDetail(container, canWrite, refresh, { detail, pieces, catalogue, stocks });
+  } else {
+    renderGestionList(container, canWrite, refresh, { catalogue, pieces, rangements, stocks });
+  }
+}
+
+function renderGestionList(container, canWrite, refresh, { catalogue, pieces, rangements, stocks }) {
+  const totals = totalsByArticle(stocks);
   let html = '';
 
   // Tension globale : somme d'un article dans toute la maison vs sa cible catalogue.
@@ -48,86 +64,134 @@ async function renderGestion(container, canWrite, refresh) {
 
   html += `<p class="unit-hint">${UNIT_HINT}</p>`;
 
-  if (canWrite) {
-    html += `<div class="toolbar"><button class="btn-ghost" data-action="add-piece">+ Ajouter une pièce</button></div>`;
-  }
+  html += `<div class="section-head">
+    <div>
+      <div class="section-head-title">Vos pièces</div>
+      <div class="section-head-sub">Vue d'ensemble par pièce et rangement</div>
+    </div>
+    ${canWrite ? `<div class="section-head-actions"><button class="btn-primary small" data-action="add-piece">+ Ajouter une pièce</button></div>` : ''}
+  </div>`;
 
   if (!pieces.length) {
     html += emptyState('door', 'Aucune pièce', canWrite ? 'Ajoute ta première pièce (Cuisine, Salle de bain…) pour commencer.' : 'Aucune pièce créée pour l’instant.');
   } else {
     pieces.forEach((piece) => {
       const piecesRangements = rangements.filter((r) => r.piece === piece.id);
-      html += `<div class="section-eyebrow">${escapeHtml(piece.nom)}${
-        canWrite
-          ? ` <button class="btn-ghost small" data-action="add-rangement" data-piece="${piece.id}" data-piece-nom="${escapeHtml(piece.nom)}">+ Rangement</button> <button class="link-danger" data-action="delete-piece" data-id="${piece.id}" data-nom="${escapeHtml(piece.nom)}">Supprimer</button>`
-          : ''
-      }</div>`;
+      html += `<div class="panel">
+        <div class="panel-head">
+          <span class="panel-head-title">${escapeHtml(piece.nom)}</span>
+          ${
+            canWrite
+              ? `<span class="panel-head-actions"><button class="btn-ghost small" data-action="add-rangement" data-piece="${piece.id}" data-piece-nom="${escapeHtml(piece.nom)}">+ Rangement</button><button class="link-danger" data-action="delete-piece" data-id="${piece.id}" data-nom="${escapeHtml(piece.nom)}">Supprimer</button></span>`
+              : ''
+          }
+        </div>
+        <div class="panel-body" style="padding-top:4px;">`;
 
       if (!piecesRangements.length) {
-        html += `<p class="row-note" style="margin-bottom:14px;">Aucun rangement dans cette pièce.</p>`;
-      }
-
-      piecesRangements.forEach((rangement) => {
-        const lignes = stocks.filter((s) => s.rangement === rangement.id);
-        html += `<div class="panel">
-          <div class="panel-head">
-            <span class="panel-head-title">${escapeHtml(rangement.nom)}</span>
-            ${
-              canWrite
-                ? `<span class="panel-head-actions"><button class="btn-ghost small" data-action="add-stock" data-rangement="${rangement.id}" data-rangement-nom="${escapeHtml(rangement.nom)}">+ Article</button><button class="link-danger" data-action="delete-rangement" data-id="${rangement.id}" data-nom="${escapeHtml(rangement.nom)}">Supprimer</button></span>`
-                : ''
-            }
-          </div>
-          <div class="panel-body" style="padding-top:8px;">`;
-        if (!lignes.length) {
-          html += `<p class="row-note">Vide.</p>`;
-        }
-        lignes.forEach((ligne) => {
-          const article = ligne.expand?.article;
-          html += `<div class="row">
-            <div><div class="row-text">${article ? escapeHtml(article.nom) : '(article supprimé)'}</div><div class="row-note">${ligne.quantite}</div></div>
-            ${
-              canWrite
-                ? `<span class="panel-head-actions"><button class="btn-ghost small" data-action="edit-stock" data-id="${ligne.id}" data-nom="${article ? escapeHtml(article.nom) : ''}" data-qty="${ligne.quantite}">Ajuster</button><button class="link-danger" data-action="delete-stock" data-id="${ligne.id}" data-nom="${article ? escapeHtml(article.nom) : ''}">Retirer</button></span>`
-                : ''
-            }
-          </div>`;
+        html += `<p class="row-note" style="padding:6px 0;">Aucun rangement dans cette pièce.</p>`;
+      } else {
+        html += '<div class="rangement-list">';
+        piecesRangements.forEach((rangement) => {
+          const count = stocks.filter((s) => s.rangement === rangement.id).length;
+          html += `<button class="row rangement-row" data-action="open-rangement" data-id="${rangement.id}">
+            <span><span class="row-text">${escapeHtml(rangement.nom)}</span><span class="row-note">${count ? `${count} article${count > 1 ? 's' : ''}` : 'Vide'}</span></span>
+            <span class="chevron-ic">${icon('chevron-right')}</span>
+          </button>`;
         });
-        html += '</div></div>';
-      });
+        html += '</div>';
+      }
+      html += '</div></div>';
     });
   }
 
   container.innerHTML = html;
-  container.onclick = (e) => {
+  container.onclick = async (e) => {
     if (e.target.closest('[data-action="add-piece"]')) {
       dialogAddPiece(refresh);
       return;
     }
+    const openR = e.target.closest('[data-action="open-rangement"]');
+    if (openR) {
+      currentDetailRangement = openR.dataset.id;
+      refresh();
+      return;
+    }
     const delPiece = e.target.closest('[data-action="delete-piece"]');
     if (delPiece) {
-      if (confirm(`Supprimer la pièce « ${delPiece.dataset.nom} » et tous ses rangements ?`)) {
-        deletePiece(delPiece.dataset.id).then(refresh).catch((err) => alert(err.message));
-      }
+      const ok = await confirmModal(
+        `Supprimer « ${delPiece.dataset.nom} » ?`,
+        'Cette pièce et tous ses rangements (avec leur contenu) seront supprimés.'
+      );
+      if (ok) deletePiece(delPiece.dataset.id).then(refresh).catch((err) => alert(err.message));
       return;
     }
     const addRangement = e.target.closest('[data-action="add-rangement"]');
     if (addRangement) {
       dialogAddRangement({ pieceId: addRangement.dataset.piece, pieceNom: addRangement.dataset.pieceNom }, refresh);
-      return;
     }
-    const delRangement = e.target.closest('[data-action="delete-rangement"]');
-    if (delRangement) {
-      if (confirm(`Supprimer le rangement « ${delRangement.dataset.nom} » et son contenu ?`)) {
-        deleteRangement(delRangement.dataset.id).then(refresh).catch((err) => alert(err.message));
+  };
+}
+
+function renderGestionDetail(container, canWrite, refresh, { detail, pieces, catalogue, stocks }) {
+  const piece = pieces.find((p) => p.id === detail.piece);
+  const lignes = stocks.filter((s) => s.rangement === detail.id);
+  const already = new Set(lignes.map((s) => s.article));
+  const availableCatalogue = catalogue.filter((a) => !already.has(a.id));
+
+  let html = `<button class="detail-back" data-action="back-to-list">${icon('arrow-left')} Retour</button>
+  <div class="section-head">
+    <div>
+      <div class="section-head-title">${escapeHtml(detail.nom)}</div>
+      <div class="section-head-sub">${piece ? escapeHtml(piece.nom) : ''}</div>
+    </div>
+    ${
+      canWrite
+        ? `<div class="section-head-actions"><button class="btn-ghost small" data-action="add-stock">+ Article</button><button class="icon-btn" data-action="delete-rangement" title="Supprimer">${icon('trash')}</button></div>`
+        : ''
+    }
+  </div>
+  <div class="panel"><div class="panel-body" style="padding-top:8px;">`;
+
+  if (!lignes.length) {
+    html += `<p class="row-note">Vide.</p>`;
+  }
+  lignes.forEach((ligne) => {
+    const article = ligne.expand?.article;
+    html += `<div class="row">
+      <div><div class="row-text">${article ? escapeHtml(article.nom) : '(article supprimé)'}</div><div class="row-note">${ligne.quantite}</div></div>
+      ${
+        canWrite
+          ? `<span class="panel-head-actions"><button class="btn-ghost small" data-action="edit-stock" data-id="${ligne.id}" data-nom="${article ? escapeHtml(article.nom) : ''}" data-qty="${ligne.quantite}">Ajuster</button><button class="link-danger" data-action="delete-stock" data-id="${ligne.id}" data-nom="${article ? escapeHtml(article.nom) : ''}">Retirer</button></span>`
+          : ''
       }
+    </div>`;
+  });
+  html += '</div></div>';
+
+  container.innerHTML = html;
+  container.onclick = async (e) => {
+    if (e.target.closest('[data-action="back-to-list"]')) {
+      currentDetailRangement = null;
+      refresh();
       return;
     }
-    const addStock = e.target.closest('[data-action="add-stock"]');
-    if (addStock) {
-      const rangementId = addStock.dataset.rangement;
-      const already = new Set(stocks.filter((s) => s.rangement === rangementId).map((s) => s.article));
-      dialogAddStock({ rangementId, rangementNom: addStock.dataset.rangementNom, catalogue: catalogue.filter((a) => !already.has(a.id)) }, refresh);
+    if (e.target.closest('[data-action="add-stock"]')) {
+      dialogAddStock({ rangementId: detail.id, rangementNom: detail.nom, catalogue: availableCatalogue }, refresh);
+      return;
+    }
+    if (e.target.closest('[data-action="delete-rangement"]')) {
+      const ok = await confirmModal(
+        `Supprimer « ${detail.nom} » ?`,
+        lignes.length
+          ? `Ce rangement et son contenu (${lignes.length} article${lignes.length > 1 ? 's' : ''}) seront supprimés.`
+          : 'Ce rangement est vide.'
+      );
+      if (ok) {
+        deleteRangement(detail.id)
+          .then(() => { currentDetailRangement = null; refresh(); })
+          .catch((err) => alert(err.message));
+      }
       return;
     }
     const editStock = e.target.closest('[data-action="edit-stock"]');
@@ -137,9 +201,8 @@ async function renderGestion(container, canWrite, refresh) {
     }
     const delStock = e.target.closest('[data-action="delete-stock"]');
     if (delStock) {
-      if (confirm(`Retirer « ${delStock.dataset.nom} » de ce rangement ?`)) {
-        deleteStock(delStock.dataset.id).then(refresh).catch((err) => alert(err.message));
-      }
+      const ok = await confirmModal(`Retirer « ${delStock.dataset.nom} » ?`, 'Cette ligne sera retirée du rangement.');
+      if (ok) deleteStock(delStock.dataset.id).then(refresh).catch((err) => alert(err.message));
     }
   };
 }
@@ -207,10 +270,13 @@ function dialogEditStock({ id, nom, qty }, onDone) {
 async function renderCatalogue(container, canWrite, refresh) {
   const items = await listCatalogue();
 
-  let html = '';
-  if (canWrite) {
-    html += `<div class="toolbar"><button class="btn-ghost" data-action="add-article">+ Ajouter un article</button></div>`;
-  }
+  let html = `<div class="section-head">
+    <div>
+      <div class="section-head-title">Catalogue</div>
+      <div class="section-head-sub">Les articles connus et leur quantité cible pour toute la maison</div>
+    </div>
+    ${canWrite ? `<div class="section-head-actions"><button class="btn-primary small" data-action="add-article">+ Ajouter un article</button></div>` : ''}
+  </div>`;
   html += `<p class="unit-hint">${UNIT_HINT}</p>`;
 
   if (!items.length) {
@@ -234,7 +300,7 @@ async function renderCatalogue(container, canWrite, refresh) {
   }
 
   container.innerHTML = html;
-  container.onclick = (e) => {
+  container.onclick = async (e) => {
     if (e.target.closest('[data-action="add-article"]')) {
       dialogArticle(null, refresh);
       return;
@@ -247,9 +313,8 @@ async function renderCatalogue(container, canWrite, refresh) {
     const delBtn = e.target.closest('[data-action="delete-article"]');
     if (delBtn) {
       const nom = delBtn.dataset.nom;
-      if (confirm(`Supprimer l'article « ${nom} » du catalogue (et de tous les rangements où il apparaît) ?`)) {
-        deleteCatalogueItem(delBtn.dataset.id).then(refresh).catch((err) => alert(err.message));
-      }
+      const ok = await confirmModal(`Supprimer « ${nom} » du catalogue ?`, 'Il sera aussi retiré de tous les rangements où il apparaît.');
+      if (ok) deleteCatalogueItem(delBtn.dataset.id).then(refresh).catch((err) => alert(err.message));
     }
   };
 }
@@ -308,6 +373,33 @@ function openDialog(title, bodyHtml, { onSubmit, submitLabel = 'Enregistrer' } =
 
   dlg.showModal();
   return dlg;
+}
+
+// Remplace confirm() natif : modale stylée cohérente avec le design, message
+// contextuel (ce qui sera réellement supprimé). Résout à true/false.
+function confirmModal(title, message, { confirmLabel = 'Supprimer' } = {}) {
+  return new Promise((resolve) => {
+    const dlg = document.createElement('dialog');
+    dlg.className = 'app-dialog';
+    dlg.innerHTML = `
+      <div class="dialog-form dialog-form-confirm">
+        <div class="confirm-icon">${icon('alert-triangle')}</div>
+        <h3>${escapeHtml(title)}</h3>
+        <p class="dialog-sub">${escapeHtml(message)}</p>
+        <div class="dialog-actions">
+          <button type="button" class="btn-ghost" data-cancel>Annuler</button>
+          <button type="button" class="btn-danger" data-confirm>${escapeHtml(confirmLabel)}</button>
+        </div>
+      </div>`;
+    document.body.appendChild(dlg);
+
+    const finish = (result) => { dlg.close(); dlg.remove(); resolve(result); };
+    dlg.querySelector('[data-cancel]').addEventListener('click', () => finish(false));
+    dlg.querySelector('[data-confirm]').addEventListener('click', () => finish(true));
+    dlg.addEventListener('cancel', () => finish(false));
+
+    dlg.showModal();
+  });
 }
 
 function emptyState(iconName, title, text) {
