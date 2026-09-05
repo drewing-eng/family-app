@@ -128,9 +128,15 @@ h1, h2 { font-weight: 700; letter-spacing: -0.02em; }
 .tab-btn:hover { background: var(--alt); color: var(--text); }
 .tab-btn.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
 
-.subtabs-desktop { display: none; gap: 4px; }
+.subtabs-desktop { display: none; align-items: center; gap: 4px; }
 .subtabs-desktop:not(:empty) { padding: 10px 28px 4px; }
 @media (min-width: 769px) { .subtabs-desktop:not(:empty) { display: flex; } }
+
+/* Jauge "% du catalogue hors tension" (module Stocks, desktop uniquement —
+   ajoutée après coup dans #subtabsDesktop par shell.js une fois le résumé
+   connu, voir gaugeHtml()). Poussée à droite des sous-onglets. */
+.subtabs-gauge { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+.subtabs-gauge-text { font-size: 0.68rem; line-height: 1.3; color: var(--muted); }
 
 .subtabs-mobile {
   display: flex; gap: 4px;
@@ -220,6 +226,33 @@ h1, h2 { font-weight: 700; letter-spacing: -0.02em; }
   font-size: 0.76rem; color: var(--muted); font-style: italic; margin: 0 0 14px;
 }
 .field-hint { margin: -6px 0 0; }
+
+/* ══════════════ RECHERCHE + FILTRE (Gestion — Liste) ══════════════ */
+.stocks-toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 26px; flex-wrap: wrap; }
+.stocks-search {
+  display: flex; align-items: center; gap: 10px; flex: 1; min-width: 180px;
+  background: var(--panel); box-shadow: var(--shadow-float); border-radius: var(--radius-sm); padding: 10px 16px;
+}
+.stocks-search .ic-svg { color: var(--muted); flex-shrink: 0; }
+.stocks-search input { border: none; outline: none; background: none; font-family: inherit; font-size: 0.88rem; color: var(--text); flex: 1; min-width: 0; }
+.stocks-search input::placeholder { color: var(--muted); }
+.stocks-piece-filter {
+  font-family: inherit; font-size: 0.85rem; font-weight: 600; color: var(--muted);
+  background: var(--panel); box-shadow: var(--shadow-float); border: none; border-radius: var(--radius-sm);
+  padding: 10px 16px; cursor: pointer;
+}
+.stocks-sort-toggle {
+  border: none; background: var(--panel); box-shadow: var(--shadow-float); color: var(--muted);
+  border-radius: var(--radius-sm); padding: 10px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.stocks-sort-toggle.active { background: var(--accent-soft); color: var(--accent); box-shadow: none; }
+
+/* Ligne d'article en détail de rangement : nom+quantité/cible à gauche
+   (largeur fixe), barre de remplissage --accent au milieu, actions à droite
+   — même schéma que .tension-row mais en --accent (remplissage, pas alerte). */
+.row-label { flex-shrink: 0; }
+.detail-row-bar { flex: 1; height: 6px; border-radius: 999px; background: var(--alt); }
+.detail-row-bar-fill { display: block; height: 100%; border-radius: 999px; background: var(--accent); }
 
 .btn-ghost {
   font-family: inherit; font-size: 0.85rem; font-weight: 600;

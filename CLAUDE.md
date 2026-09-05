@@ -140,15 +140,25 @@ verrouillées" ci-dessous.** Les collections `coffres`/`emplacements`/
 `historique` documentées dans une version précédente de ce fichier n'ont
 jamais été créées côté serveur : rien à migrer, ce schéma-ci est le seul valide.
 
-Pas d'unité structurée en base (`quantite`, `quantite_cible` sont de simples
-nombres) — juste une mention dans l'interface (g/kg/ml/L/pièces…), décision
-produit pour ne pas avoir à définir une unité par article pour l'instant.
+`quantite`/`quantite_cible` restent de simples nombres (pas de type "unité"
+structuré, pas de conversion) — `catalogue.unite` est un texte libre optionnel
+posé par article (g, kg, ml, L, pièces…), affiché tel quel partout où sa
+quantité apparaît (catalogue, panel de tension, détail de rangement). Tant
+qu'un article n'a pas ce champ renseigné, l'interface retombe sur un simple
+rappel textuel générique.
+
+⚠️ **`catalogue.unite` n'existe pas encore côté PocketBase** — comme pour le
+reste du schéma, seul le superadmin peut l'ajouter (moi je ne peux pas). Le
+code envoie déjà `unite` à la création/modification d'un article (PocketBase
+ignore silencieusement un champ inconnu, donc rien ne casse en attendant) ;
+il suffit d'ajouter le champ pour qu'il commence à être persisté et affiché.
 
 **Collection `catalogue`**
 | Champ | Type | Options |
 |---|---|---|
 | `nom` | Text | requis |
 | `quantite_cible` | Number | requis, min 1 — le niveau "stock plein" pour cet article, toute la maison confondue |
+| `unite` | Text | optionnel — unité affichée à côté des quantités de cet article (g, kg, ml, L, pièces…) — **à créer côté PocketBase, voir avertissement ci-dessus** |
 
 **Collection `pieces`**
 | Champ | Type | Options |
@@ -329,7 +339,10 @@ pour le détail des collections et de leurs règles d'API par rôle.
       desktop / Family Wall mobile, mode sombre par profil, manifest PWA.
 - [x] **Chantier 3 — Module Stocks** : collections PocketBase (schéma
       Pièce → Rangement → articles, documenté, à créer par le superadmin),
-      CRUD complet, badge "stock en tension" (calcul global).
+      CRUD complet, badge "stock en tension" (calcul global), recherche +
+      filtre par pièce + tri "tension d'abord" sur Gestion — Liste, jauge
+      "% du catalogue hors tension" (desktop), unité par article
+      (`catalogue.unite`, texte libre optionnel).
 - [ ] **Chantier 4 — Module Menus & Family Wall** : iframe family-menu,
       widgets menu du jour + alertes stock sur le Wall.
 - [ ] **Chantier 5 — Sécurisation** : durcissement de l'admin PocketBase,
@@ -348,6 +361,9 @@ pour le détail des collections et de leurs règles d'API par rôle.
 - **Collections Stocks pas encore créées côté PocketBase** — schéma exact
   dans "Modèle de données PocketBase" ci-dessus, à faire par le superadmin
   avant de pouvoir tester le module en conditions réelles.
+- **`catalogue.unite` pas encore créé côté PocketBase** — texte libre
+  optionnel, voir "Modèle de données PocketBase" ci-dessus ; le code
+  l'envoie déjà mais rien n'est persisté tant que le champ n'existe pas.
 - URL de production de family-menu, pour l'iframe (chantier 4).
 - Audit complet des règles d'API PocketBase par rôle (chantier 5) — les
   règles de base sont posées collection par collection au fil des

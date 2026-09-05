@@ -135,10 +135,21 @@ export function renderShell(root) {
       const tabsHtml = STOCK_TABS.map(
         (t) => `<button class="tab-btn${t.id === state.stockTab ? ' active' : ''}" data-stocktab="${t.id}">${t.label}</button>`
       ).join('');
+      // Sous-onglets identiques sur les deux gabarits ; la jauge "% hors
+      // tension" n'existe qu'en desktop (place manquante sur mobile — voir
+      // design-systeme.md), ajoutée après coup dans subtabsDesktop une fois
+      // le résumé connu (onSummary, ci-dessous).
       subtabsDesktop.innerHTML = tabsHtml;
       subtabsMobile.innerHTML = tabsHtml;
       contentBody.classList.add('has-subtabs');
-      renderStocksTab(contentBody, state.stockTab, user);
+      renderStocksTab(contentBody, state.stockTab, user, {
+        onSummary: ({ tense, total }) => {
+          const pct = total > 0 ? Math.round(((total - tense) / total) * 100) : 100;
+          const existing = subtabsDesktop.querySelector('.subtabs-gauge');
+          if (existing) existing.outerHTML = gaugeHtml(pct);
+          else subtabsDesktop.insertAdjacentHTML('beforeend', gaugeHtml(pct));
+        },
+      });
     } else {
       subtabsDesktop.innerHTML = '';
       subtabsMobile.innerHTML = '';
@@ -203,6 +214,24 @@ export function renderShell(root) {
 
   syncThemeButtons();
   render();
+}
+
+// Jauge circulaire compacte (maquette : écran Stocks desktop, à côté des
+// sous-onglets) — % du catalogue hors tension, recalculée à chaque résumé
+// fourni par stocks.js (onSummary), sans refetch dédié côté coquille.
+function gaugeHtml(pct) {
+  const r = 21;
+  const c = 2 * Math.PI * r;
+  const offset = c * (1 - pct / 100);
+  return `<div class="subtabs-gauge">
+    <svg width="48" height="48" viewBox="0 0 52 52">
+      <circle cx="26" cy="26" r="${r}" fill="none" stroke="var(--panel)" stroke-width="6"/>
+      <circle cx="26" cy="26" r="${r}" fill="none" stroke="var(--accent)" stroke-width="6" stroke-linecap="round"
+        stroke-dasharray="${c.toFixed(1)}" stroke-dashoffset="${offset.toFixed(1)}" transform="rotate(-90 26 26)"/>
+      <text x="26" y="30" text-anchor="middle" font-size="13" font-weight="800" fill="var(--text)" font-family="Manrope">${pct}%</text>
+    </svg>
+    <span class="subtabs-gauge-text">du catalogue<br>hors tension</span>
+  </div>`;
 }
 
 function renderContent(moduleId, modules) {
