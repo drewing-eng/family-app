@@ -37,9 +37,9 @@
    composant. Accueil et Menus n'ont pas de bloc dédié : ils gardent le bleu
    ci-dessus par défaut. */
 #app[data-module="stocks"] {
-  --accent: #C2660C;
+  --accent: #EA7D12;
   --accent-soft: #FBE7D2;
-  --canvas: #FBF3E9;
+  --canvas: #FDFAF6;
 }
 #app[data-module="finance"] {
   --accent: #1F8F55;
