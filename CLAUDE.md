@@ -345,27 +345,31 @@ Implémenté au chantier 2 :
 - `src/views/shell.js` — filtre la nav par `apps_autorisees`, affiche le
   rôle en badge dans le profil (sidebar desktop), gère la déconnexion.
 
-**Module Admin** (`src/views/admin.js`, `src/lib/users.js`) — liste,
-création, modification, suppression des comptes. Visible dans la nav pour
-Admin et Membre (Admin en écriture complète, Membre en lecture seule — pas
-de boutons d'action), invisible pour Invité — **gating par rôle, pas par
-`apps_autorisees`** (contrairement à Menus/Stocks), voir `ALL_MODULES` dans
-`shell.js`. Un admin ne peut pas se supprimer lui-même depuis cet écran (le
-bouton "Supprimer" est masqué sur sa propre ligne). Le formulaire ne propose
-que Menus/Stocks comme "applications ouvertes" (Wall est toujours accessible,
-Finances toujours désactivée — inutile de les proposer, voir "Décisions
-verrouillées"). `theme` est posé à `"clair"` à la création pour ne jamais
-laisser un compte sans valeur par défaut (voir modèle de données ci-dessus).
-
 **Mon compte** (`src/views/account.js`) — accessible à tous les rôles en
 cliquant son propre profil (avatar/nom dans la sidebar desktop, avatar dans
 l'en-tête mobile — pas d'entrée dans la nav principale, voir
-`ACCOUNT_MODULE` dans `shell.js`), jamais un module de la liste `ALL_MODULES`.
+`ACCOUNT_MODULE` dans `shell.js`), jamais un module de la liste `ALL_MODULES`
+(la sidebar ne garde que les modules "app" : Accueil/Menus/Stocks/Finances).
 Change nom/email (`updateMyInfo`) et mot de passe (`changeMyPassword`, qui
 exige `oldPassword` — PocketBase l'impose pour un changement de mot de passe
 en self-service, contrairement à `updateUser` utilisé par un admin sur un
 autre compte). Après un changement de nom, `shell.js:syncProfileDisplay()`
 rafraîchit l'avatar/le nom affichés sans reconstruire tout le shell.
+
+**Module Admin** (`src/views/admin.js`, `src/lib/users.js`) — liste,
+création, modification, suppression des comptes. Pas un module à part dans
+la nav : c'est un **sous-onglet de Mon compte** (même mécanisme que
+Gestion/Catalogue pour Stocks — sous-onglets réutilisés tel quel, voir
+`accountTabsFor()` dans `shell.js`), visible seulement pour Admin et Membre
+(Admin en écriture complète, Membre en lecture seule — pas de boutons
+d'action), absent des sous-onglets pour Invité (un seul onglet "Mon compte",
+donc pas de barre de sous-onglets du tout dans ce cas). Un admin ne peut pas
+se supprimer lui-même depuis cet écran (le bouton "Supprimer" est masqué sur
+sa propre ligne). Le formulaire ne propose que Menus/Stocks comme
+"applications ouvertes" (Wall est toujours accessible, Finances toujours
+désactivée — inutile de les proposer, voir "Décisions verrouillées").
+`theme` est posé à `"clair"` à la création pour ne jamais laisser un compte
+sans valeur par défaut (voir modèle de données ci-dessus).
 
 ⚠️ **Règles d'API PocketBase requises sur la collection `users`** (à poser
 par le superadmin, je ne peux pas les créer moi-même) pour que ces deux

@@ -13,16 +13,20 @@ const ALL_MODULES = [
   { id: 'wall', icon: 'home', label: 'Accueil', always: true },
   { id: 'menus', icon: 'calendar', label: 'Menus' },
   { id: 'stocks', icon: 'box', label: 'Stocks' },
-  // Gérée par rôle plutôt que par apps_autorisees (comme Wall/Finances) :
-  // Admin peut tout, Membre voit en lecture seule, Invité n'y a pas accès du
-  // tout — indépendant des applications ouvertes de chacun.
-  { id: 'admin', icon: 'users', label: 'Admin', roles: ['admin', 'membre'] },
 ];
 
-// "Mon compte" n'est pas dans ALL_MODULES : pas de tuile/item de nav dédié,
-// on y accède en cliquant son propre profil (avatar/nom, sidebar ou en-tête
-// mobile) — toujours accessible, quel que soit le rôle.
+// "Mon compte" n'est pas dans ALL_MODULES : pas de tuile/item de nav dédié
+// (sidebar réservée aux modules "app"), on y accède en cliquant son propre
+// profil (avatar/nom, sidebar ou en-tête mobile) — toujours accessible, quel
+// que soit le rôle. Admin en est un sous-onglet (comme Gestion/Catalogue
+// pour Stocks), visible seulement pour Admin/Membre — voir accountTabsFor().
 const ACCOUNT_MODULE = { id: 'compte', label: 'Mon compte' };
+
+function accountTabsFor(role) {
+  return role === 'admin' || role === 'membre'
+    ? [{ id: 'compte', label: 'Mon compte' }, { id: 'admin', label: 'Admin' }]
+    : [];
+}
 
 const STOCK_TABS = [
   { id: 'gestion', label: 'Gestion' },
@@ -41,15 +45,14 @@ function initials(user) {
 
 function hashModule() {
   const m = (location.hash || '').replace(/^#\/?/, '');
-  return ['wall', 'menus', 'stocks', 'admin', 'compte'].includes(m) ? m : 'wall';
+  return ['wall', 'menus', 'stocks', 'compte'].includes(m) ? m : 'wall';
 }
 
 export function renderShell(root) {
   const user = pb.authStore.record;
   const allowed = userApps(user);
-  const role = userRole(user);
-  const modules = ALL_MODULES.filter((m) => (m.roles ? m.roles.includes(role) : m.always || allowed.includes(m.id)));
-  const state = { module: hashModule(), stockTab: 'gestion' };
+  const modules = ALL_MODULES.filter((m) => m.always || allowed.includes(m.id));
+  const state = { module: hashModule(), stockTab: 'gestion', accountTab: 'compte' };
   if (state.module !== 'compte' && !modules.some((m) => m.id === state.module)) state.module = 'wall';
 
   root.innerHTML = `
@@ -167,18 +170,25 @@ export function renderShell(root) {
           else subtabsDesktop.insertAdjacentHTML('beforeend', gaugeHtml(pct));
         },
       });
+    } else if (state.module === 'compte') {
+      const tabs = accountTabsFor(userRole(user));
+      const tabsHtml = tabs
+        .map((t) => `<button class="tab-btn${t.id === state.accountTab ? ' active' : ''}" data-accounttab="${t.id}">${t.label}</button>`)
+        .join('');
+      subtabsDesktop.innerHTML = tabsHtml;
+      subtabsMobile.innerHTML = tabsHtml;
+      contentBody.classList.toggle('has-subtabs', tabs.length > 0);
+      if (state.accountTab === 'admin' && tabs.some((t) => t.id === 'admin')) {
+        renderAdminTab(contentBody, user);
+      } else {
+        renderAccountTab(contentBody, user, { onUpdated: syncProfileDisplay });
+      }
     } else {
       subtabsDesktop.innerHTML = '';
       subtabsMobile.innerHTML = '';
       contentBody.classList.remove('has-subtabs');
-      if (state.module === 'admin') {
-        renderAdminTab(contentBody, user);
-      } else if (state.module === 'compte') {
-        renderAccountTab(contentBody, user, { onUpdated: syncProfileDisplay });
-      } else {
-        contentBody.innerHTML = renderContent(state.module, modules);
-        if (state.module === 'wall') fillWallWidgets(contentBody, modules);
-      }
+      contentBody.innerHTML = renderContent(state.module, modules);
+      if (state.module === 'wall') fillWallWidgets(contentBody, modules);
     }
   }
 
@@ -199,6 +209,7 @@ export function renderShell(root) {
     if (nav) {
       state.module = nav.getAttribute('data-nav');
       state.stockTab = 'gestion';
+      state.accountTab = 'compte';
       render();
       return;
     }
@@ -206,12 +217,19 @@ export function renderShell(root) {
     if (goto) {
       state.module = goto.getAttribute('data-goto');
       state.stockTab = 'gestion';
+      state.accountTab = 'compte';
       render();
       return;
     }
     const stocktab = e.target.closest('[data-stocktab]');
     if (stocktab) {
       state.stockTab = stocktab.getAttribute('data-stocktab');
+      render();
+      return;
+    }
+    const accounttab = e.target.closest('[data-accounttab]');
+    if (accounttab) {
+      state.accountTab = accounttab.getAttribute('data-accounttab');
       render();
       return;
     }
