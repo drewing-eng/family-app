@@ -1,6 +1,7 @@
 import { pb, logout, userRole, userApps, updateTheme } from '../lib/pocketbase.js';
 import { applyTheme, currentThemeAttr } from '../lib/theme.js';
 import { renderStocksTab } from './stocks.js';
+import { tensionItems } from '../lib/stocks.js';
 import { icon } from '../lib/icons.js';
 import { initDrawer } from '../lib/drawer.js';
 
@@ -155,6 +156,7 @@ export function renderShell(root) {
       subtabsMobile.innerHTML = '';
       contentBody.classList.remove('has-subtabs');
       contentBody.innerHTML = renderContent(state.module, modules);
+      if (state.module === 'wall') fillWallWidgets(contentBody, modules);
     }
   }
 
@@ -243,14 +245,21 @@ function renderContent(moduleId, modules) {
 }
 
 function renderWall(modules) {
+  const allowedIds = modules.map((m) => m.id);
   let html = `
     <div class="wall-header">
       <div class="hello">Bonjour</div>
       <h1>Le mur de la famille</h1>
-    </div>
-    <div class="empty-state small">
-      <p>Le menu du jour et les alertes de stock arriveront ici au chantier 4.</p>
     </div>`;
+
+  // Widgets : un par module qui a quelque chose de réel à montrer. Stocks
+  // est rempli après coup par fillWallWidgets() (données PocketBase) ; Menus
+  // reste un placeholder tant que l'URL de production de family-menu n'est
+  // pas fournie (chantier 4) — jamais de contenu inventé à sa place.
+  let widgets = '';
+  if (allowedIds.includes('menus')) widgets += menusPlaceholderWidget();
+  if (allowedIds.includes('stocks')) widgets += '<div id="wallStockWidget"></div>';
+  if (widgets) html += `<div class="wall-widgets">${widgets}</div>`;
 
   const tiles = modules.filter((m) => m.id !== 'wall');
   if (tiles.length) {
@@ -262,6 +271,50 @@ function renderWall(modules) {
     html += '</div></div>';
   }
   return html;
+}
+
+function menusPlaceholderWidget() {
+  return `<div class="wall-widget wall-widget-placeholder">
+    <div class="wall-widget-head"><span class="wall-widget-title">Menu du jour</span></div>
+    <p class="row-note">Connexion à créer — l'URL de production de family-menu n'est pas encore renseignée.</p>
+  </div>`;
+}
+
+function stockWidgetHtml(items) {
+  if (!items.length) return ''; // rien en tension : pas de widget plutôt qu'un "0" creux
+  const rows = items.slice(0, 4).map((a) => {
+    const pct = Math.max(0, Math.min(100, (a.total / a.quantite_cible) * 100));
+    const unite = a.unite ? ` ${escapeHtml(a.unite)}` : '';
+    return `<div class="wall-widget-row">
+      <div class="wall-widget-row-head"><span>${escapeHtml(a.nom)}</span><span>${a.total} / ${a.quantite_cible}${unite}</span></div>
+      <div class="wall-widget-bar"><div class="wall-widget-bar-fill" style="width:${pct}%"></div></div>
+    </div>`;
+  }).join('');
+  return `<button class="wall-widget" data-goto="stocks">
+    <div class="wall-widget-head"><span class="wall-widget-title">Stocks en tension</span><span class="badge accent">${items.length}</span></div>
+    <div class="wall-widget-rows">${rows}</div>
+  </button>`;
+}
+
+// Rempli après coup (comme la jauge desktop de Stocks) : le Wall se peint
+// tout de suite, le widget Stocks apparaît dès que ses données PocketBase
+// arrivent, sans bloquer le reste de l'écran.
+async function fillWallWidgets(container, modules) {
+  const grid = container.querySelector('.wall-widgets');
+  if (!grid) return;
+  if (modules.some((m) => m.id === 'stocks')) {
+    const slot = grid.querySelector('#wallStockWidget');
+    if (slot) {
+      try {
+        const html = stockWidgetHtml(await tensionItems());
+        if (html) slot.outerHTML = html;
+        else slot.remove();
+      } catch {
+        slot.remove(); // pas de vraie donnée disponible : pas de widget, jamais de contenu inventé
+      }
+    }
+  }
+  if (!grid.children.length) grid.remove();
 }
 
 function emptyState(iconName, title, text) {

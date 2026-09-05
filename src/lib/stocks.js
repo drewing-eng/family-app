@@ -73,3 +73,15 @@ export function totalsByArticle(stocks) {
   });
   return totals;
 }
+
+// Articles en tension, du plus critique (ratio le plus bas) au moins
+// critique — utilisé par le widget Wall "Stocks en tension" (voir
+// shell.js), pourra resservir ailleurs (notifications, etc.).
+export async function tensionItems() {
+  const [catalogue, stocks] = await Promise.all([listCatalogue(), listStocks()]);
+  const totals = totalsByArticle(stocks);
+  return catalogue
+    .map((a) => ({ ...a, total: totals.get(a.id) || 0 }))
+    .filter((a) => isTension(a.total, a.quantite_cible))
+    .sort((a, b) => a.total / a.quantite_cible - b.total / b.quantite_cible);
+}
