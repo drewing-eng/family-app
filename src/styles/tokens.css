@@ -40,13 +40,21 @@
    racine de l'app (attribut data-module posé par shell.js) ; tout le reste de
    l'UI référence déjà ces trois jetons, donc rien d'autre à changer par
    composant. Accueil et Menus n'ont pas de bloc dédié : ils gardent le bleu
-   ci-dessus par défaut. */
-#app[data-module="stocks"] {
+   ci-dessus par défaut.
+
+   Scopé à html[data-theme="light"] : #app[data-module] seul aurait une
+   spécificité (1,1,0) plus forte que :root[data-theme="dark"] (0,2,0) et
+   gagnerait donc TOUJOURS, y compris en sombre — où --accent-soft/--canvas
+   clairs (chips/fond crème) jureraient sur un panel sombre. En attendant une
+   vraie déclinaison sombre par module (pas encore validée visuellement, voir
+   bloc sombre ci-dessous), le mode sombre reste volontairement sur un seul
+   accent générique, quel que soit le module. */
+html[data-theme="light"] #app[data-module="stocks"] {
   --accent: #EA7D12;
   --accent-soft: #FBE7D2;
   --canvas: #FDFAF6;
 }
-#app[data-module="finance"] {
+html[data-theme="light"] #app[data-module="finance"] {
   --accent: #1F8F55;
   --accent-soft: #DBF2E4;
   --canvas: #EEF8F1;
