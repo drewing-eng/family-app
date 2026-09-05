@@ -232,18 +232,26 @@ Résumé très court :
 - **Aucun emoji dans l'interface**, uniquement des icônes trait SVG
   (`src/lib/icons.js`, style Feather/Lucide).
 
-**Mode sombre** — pas encore réévalué depuis le changement de direction
-visuelle (l'ancien bloc `[data-theme="dark"]` de `tokens.css` était dérivé
-de l'ancienne base family-menu). À refaire en même temps que la réécriture
-de `tokens.css`. Ce qui reste vrai quel que soit le design : toujours
-**ouvrir l'app en clair par défaut**, jamais suivre `prefers-color-scheme`
+**Mode sombre** — dérivation générique posée dans `tokens.css`
+(`:root[data-theme="dark"]`), jamais validée visuellement par l'utilisateur
+(décision explicite : pas de nouvelle palette sans validation, voir
+"Décisions verrouillées"). Un bug de cascade a été corrigé depuis : les
+blocs `#app[data-module="stocks"|"finance"]` avaient une spécificité CSS
+plus forte que `:root[data-theme="dark"]` et gagnaient donc toujours, même
+en sombre, faisant fuiter des fonds crème/pâles dans un module par ailleurs
+sombre. Ils sont maintenant scopés à `html[data-theme="light"]` — en sombre,
+**tous les modules retombent sur un seul accent générique** (lavande),
+volontairement pas encore décliné par module (orange Stocks, vert Finances)
+tant que cette déclinaison n'a pas été proposée puis validée.
+
+Ce qui reste vrai quel que soit l'état de la palette : toujours **ouvrir
+l'app en clair par défaut**, jamais suivre `prefers-color-scheme`
 silencieusement au premier chargement — l'inverse a produit un rendu jugé
 "horrible" pendant le cadrage initial. `src/lib/theme.js` pose toujours
-`data-theme` explicitement (jamais l'attribut absent), et `main.js`
-applique le thème du profil PocketBase dès qu'il est connu ; le choix est
-persisté via `updateTheme()` (`pocketbase.js`) sur le champ `theme` de
-l'utilisateur — cette mécanique-là ne change pas, seules les valeurs de
-couleur sous-jacentes seront à refaire.
+`data-theme` explicitement sur `<html>` (jamais l'attribut absent), et
+`main.js` applique le thème du profil PocketBase dès qu'il est connu ; le
+choix est persisté via `updateTheme()` (`pocketbase.js`) sur le champ
+`theme` de l'utilisateur.
 
 ⚠️ **Pièges CSS rencontrés (à garder en tête pour la suite)** :
 - Un conteneur flex à deux mises en page (sidebar+contenu sur desktop,
@@ -341,11 +349,14 @@ pour le détail des collections et de leurs règles d'API par rôle.
 - [x] **Chantier 3 — Module Stocks** : collections PocketBase (schéma
       Pièce → Rangement → articles, documenté, à créer par le superadmin),
       CRUD complet, badge "stock en tension" (calcul global), recherche +
-      filtre par pièce + tri "tension d'abord" sur Gestion — Liste, jauge
+      filtre par pièce + reset des filtres sur Gestion — Liste, jauge
       "% du catalogue hors tension" (desktop), unité par article
       (`catalogue.unite`, texte libre optionnel).
 - [ ] **Chantier 4 — Module Menus & Family Wall** : iframe family-menu,
-      widgets menu du jour + alertes stock sur le Wall.
+      widget menu du jour sur le Wall (bloqué sur l'URL de prod de
+      family-menu — le Wall affiche un placeholder "Connexion à créer" en
+      attendant). Widget "Stocks en tension" du Wall déjà fait (branché sur
+      `lib/stocks.js:tensionItems()`, cliquable vers le module Stocks).
 - [ ] **Chantier 5 — Sécurisation** : durcissement de l'admin PocketBase,
       revue des sessions (les règles d'API par collection/rôle sont déjà
       posées au fil des chantiers, à auditer plutôt qu'à créer de zéro).
