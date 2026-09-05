@@ -246,11 +246,12 @@ h1, h2 { font-weight: 700; letter-spacing: -0.02em; }
   background: var(--panel); box-shadow: var(--shadow-float); border: none; border-radius: var(--radius-sm);
   padding: 10px 16px; cursor: pointer;
 }
-.stocks-sort-toggle {
+.stocks-reset-btn {
   border: none; background: var(--panel); box-shadow: var(--shadow-float); color: var(--muted);
   border-radius: var(--radius-sm); padding: 10px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
 }
-.stocks-sort-toggle.active { background: var(--accent-soft); color: var(--accent); box-shadow: none; }
+.stocks-reset-btn:hover:not(:disabled) { color: var(--accent); }
+.stocks-reset-btn:disabled { opacity: 0.4; cursor: default; }
 
 /* Ligne d'article en détail de rangement : nom+quantité/cible à gauche
    (largeur fixe), barre de remplissage --accent au milieu, actions à droite

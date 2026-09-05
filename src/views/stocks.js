@@ -15,9 +15,9 @@ import { openDrawer, confirmDrawer } from '../lib/drawer.js';
 // seulement via le bouton Retour ou si le rangement n'existe plus.
 let currentDetailRangement = null;
 
-// Recherche/filtre/tri de l'écran Gestion — Liste : persiste tant qu'on reste
+// Recherche/filtre de l'écran Gestion — Liste : persiste tant qu'on reste
 // sur l'onglet Stocks, comme currentDetailRangement ci-dessus.
-let listFilters = { search: '', piece: '', sortTension: false };
+let listFilters = { search: '', piece: '' };
 
 export async function renderStocksTab(container, tab, user, opts = {}) {
   const canWrite = ['admin', 'membre'].includes(userRole(user));
@@ -96,7 +96,7 @@ function renderGestionList(container, canWrite, refresh, { catalogue, totals, pi
         <option value="">Toutes les pièces</option>
         ${pieces.map((p) => `<option value="${p.id}"${listFilters.piece === p.id ? ' selected' : ''}>${escapeHtml(p.nom)}</option>`).join('')}
       </select>
-      <button type="button" class="stocks-sort-toggle${listFilters.sortTension ? ' active' : ''}" id="stocksSortToggle" aria-pressed="${listFilters.sortTension}" title="Trier : rangements en tension d'abord">${icon('sort')}</button>
+      <button type="button" class="stocks-reset-btn" id="stocksResetFilters" title="Réinitialiser les filtres"${listFilters.search || listFilters.piece ? '' : ' disabled'}>${icon('x')}</button>
     </div>`;
 
     html += `<div class="section-head">
@@ -141,8 +141,6 @@ function renderGestionList(container, canWrite, refresh, { catalogue, totals, pi
               lignes.some((l) => catalogueById.get(l.article)?.nom.toLowerCase().includes(term))
           );
         }
-        if (listFilters.sortTension) entries = [...entries].sort((a, b) => b.tensionCount - a.tensionCount);
-
         if (!entries.length) {
           if (term) return; // filtre actif sans résultat : on masque la pièce plutôt que de l'afficher vide
           html += `<div class="piece-block">
@@ -217,8 +215,9 @@ function renderGestionList(container, canWrite, refresh, { catalogue, totals, pi
     }
 
     container.onclick = async (e) => {
-      if (e.target.closest('#stocksSortToggle')) {
-        listFilters.sortTension = !listFilters.sortTension;
+      if (e.target.closest('#stocksResetFilters')) {
+        listFilters.search = '';
+        listFilters.piece = '';
         paint();
         return;
       }
