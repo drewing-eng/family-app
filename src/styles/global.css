@@ -307,13 +307,21 @@ h1, h2 { font-weight: 700; letter-spacing: -0.02em; }
    repasse en une seule ligne (nom | barre | actions), inchangé. */
 .detail-row {
   display: grid; grid-template-columns: 1fr auto; grid-template-areas: "label actions" "bar bar";
-  align-items: center; row-gap: 8px; column-gap: 12px;
+  align-items: center; row-gap: 10px; column-gap: 12px; padding: 14px 0;
 }
 .detail-row .row-label { grid-area: label; min-width: 0; }
 .detail-row .panel-head-actions { grid-area: actions; }
 .detail-row .detail-row-bar { grid-area: bar; }
 @media (min-width: 769px) {
-  .detail-row { grid-template-columns: auto 1fr auto; grid-template-areas: "label bar actions"; column-gap: 16px; }
+  /* Colonne nom à largeur fixe (pas auto) : sinon un nom plus court ou plus
+     long décale le départ de la barre d'une ligne à l'autre — elles doivent
+     toutes commencer au même endroit. Noms tronqués avec ellipsis au-delà. */
+  .detail-row {
+    grid-template-columns: 160px 1fr auto; grid-template-areas: "label bar actions";
+    column-gap: 16px; padding: 10px 0;
+  }
+  .detail-row .row-label { width: 160px; }
+  .detail-row .row-text, .detail-row .row-note { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 }
 
 .row-label { flex-shrink: 0; }
