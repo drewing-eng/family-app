@@ -2,6 +2,7 @@ import { pb, logout, userRole, userApps, updateTheme } from '../lib/pocketbase.j
 import { applyTheme, currentThemeAttr } from '../lib/theme.js';
 import { renderStocksTab } from './stocks.js';
 import { icon } from '../lib/icons.js';
+import { initDrawer } from '../lib/drawer.js';
 
 const ROLE_LABEL = { admin: 'Admin', membre: 'Membre', invite: 'Invité' };
 
@@ -71,8 +72,23 @@ export function renderShell(root) {
       </main>
 
       <nav class="subtabs-mobile" id="subtabsMobile"></nav>
+
+      <aside id="drawer">
+        <div class="drawer-frame">
+          <div class="drawer-card">
+            <div class="drawer-head">
+              <h3 id="drawerTitle">Titre</h3>
+              <button class="icon-chip" id="drawerClose" aria-label="Fermer">${icon('x')}</button>
+            </div>
+            <div class="drawer-body" id="drawerBody"></div>
+          </div>
+        </div>
+      </aside>
     </div>
+    <div id="scrim" hidden></div>
   `;
+
+  initDrawer();
 
   const sideNav = root.querySelector('#sideNav');
   const contentBody = root.querySelector('#contentBody');

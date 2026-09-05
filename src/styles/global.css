@@ -246,33 +246,63 @@ h1, h2 { font-weight: 700; letter-spacing: -0.02em; }
 .detail-back:hover { color: var(--accent); }
 .detail-back .ic-svg { width: 15px; height: 15px; }
 
-/* ══════════════ DIALOGUES ══════════════
-   Stand-in pour le tiroir (voir design-systeme.md, chantier C à venir pour le
-   vrai composant push/bottom-sheet) : c'est le seul endroit de l'UI qui a le
-   droit à --shadow-float, puisqu'il doit se détacher du reste comme un tiroir. */
-/* margin: auto est ce qui centre <dialog> à l'ouverture (règle du navigateur) ;
-   le reset `* { margin: 0 }` plus haut l'écrase, donc on le repose ici
-   explicitement — sinon la boîte se colle en haut à gauche du viewport. */
-dialog.app-dialog {
-  margin: auto;
-  border: none; border-radius: var(--radius-lg); box-shadow: var(--shadow-float);
-  padding: 0; width: 100%; max-width: 360px; max-height: calc(100vh - 48px); overflow-y: auto;
-  background: var(--panel); color: var(--text);
+/* ══════════════ TIROIR (remplace le <dialog> centré) ══════════════
+   Bottom-sheet par-dessus le contenu sur mobile (scrim cliquable pour
+   fermer), carte qui pousse le contenu depuis la droite dès le breakpoint
+   desktop (pas de scrim — la place existe). Une seule media query pilote les
+   deux comportements sur le même élément #drawer ; drawer.js ne fait
+   qu'ajouter/retirer la classe .open, jamais de logique par device. C'est le
+   seul endroit de l'UI qui a le droit à --shadow-float (--radius-lg côté
+   carte), puisqu'il doit se détacher du reste comme un vrai tiroir. */
+#drawer {
+  position: fixed; left: 0; right: 0; bottom: 0; top: auto; z-index: 50;
+  height: 88vh; max-height: 88vh;
+  transform: translateY(100%);
+  transition: transform 0.32s cubic-bezier(0.32, 0.72, 0, 1);
 }
-dialog.app-dialog::backdrop { background: rgba(17, 17, 16, 0.45); }
-.dialog-form { padding: 24px 24px 20px; display: flex; flex-direction: column; gap: 14px; }
-.dialog-form h3 { font-size: 1.1rem; font-weight: 700; letter-spacing: -0.02em; }
-.dialog-form select {
+#drawer.open { transform: translateY(0); }
+.drawer-frame { width: 100%; height: 100%; box-sizing: border-box; }
+.drawer-card {
+  width: 100%; height: 100%; background: var(--panel); color: var(--text);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  display: flex; flex-direction: column;
+}
+#scrim {
+  position: fixed; inset: 0; z-index: 40; background: rgba(27, 32, 54, 0.32);
+  transition: opacity 0.28s ease;
+}
+#scrim[hidden] { display: none; }
+
+@media (min-width: 769px) {
+  #drawer {
+    position: relative; left: auto; right: auto; bottom: auto; top: auto; z-index: auto;
+    height: auto; max-height: none; transform: none;
+    width: 0; overflow: hidden; flex-shrink: 0;
+    transition: width 0.32s cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  #drawer.open { width: 400px; }
+  .drawer-frame { width: 400px; padding: 12px; }
+  .drawer-card { border-radius: var(--radius-lg); box-shadow: var(--shadow-float); }
+  /* Le scrim n'a de sens qu'en bottom-sheet mobile (le desktop pousse le
+     contenu, il ne superpose jamais) — masqué même quand JS l'a ouvert. */
+  #scrim { display: none !important; }
+}
+
+.drawer-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 22px 24px 8px; }
+.drawer-head h3 { font-size: 1.05rem; font-weight: 700; letter-spacing: -0.02em; }
+.drawer-body { padding: 8px 24px 24px; flex: 1; overflow-y: auto; }
+.drawer-body form { display: flex; flex-direction: column; gap: 14px; }
+.drawer-body select {
   font-family: inherit; font-size: 0.92rem; color: var(--text); background: var(--alt);
   border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 10px 12px;
 }
-.dialog-error { font-size: 0.82rem; color: var(--danger); }
-.dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+.drawer-error { font-size: 0.82rem; color: var(--danger); }
+.drawer-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
 
 /* Modale de confirmation (remplace confirm() natif) : centrée, icône
-   d'alerte, message contextuel — cf. confirmModal() dans stocks.js. */
-.dialog-form-confirm { text-align: center; align-items: center; }
-.dialog-form-confirm .dialog-actions { justify-content: center; width: 100%; }
+   d'alerte, message contextuel — cf. confirmDrawer() dans lib/drawer.js. */
+.drawer-confirm { display: flex; flex-direction: column; gap: 14px; text-align: center; align-items: center; }
+.drawer-actions-center { justify-content: center; width: 100%; }
 .confirm-icon { display: flex; justify-content: center; color: var(--danger); }
 .confirm-icon .ic-svg { width: 30px; height: 30px; }
-.dialog-sub { font-size: 0.85rem; color: var(--muted); margin-top: -6px; }
+.drawer-sub { font-size: 0.85rem; color: var(--muted); margin-top: -6px; }

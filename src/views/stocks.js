@@ -8,6 +8,7 @@ import {
 } from '../lib/stocks.js';
 import { pb } from '../lib/pocketbase.js';
 import { icon } from '../lib/icons.js';
+import { openDrawer, confirmDrawer } from '../lib/drawer.js';
 
 // Pas d'unité structurée en base (décision produit) : juste un rappel dans
 // l'interface, à la saisie comme à l'affichage, pour que les nombres restent
@@ -119,7 +120,7 @@ function renderGestionList(container, canWrite, refresh, { catalogue, pieces, ra
     }
     const delPiece = e.target.closest('[data-action="delete-piece"]');
     if (delPiece) {
-      const ok = await confirmModal(
+      const ok = await confirmDrawer(
         `Supprimer « ${delPiece.dataset.nom} » ?`,
         'Cette pièce et tous ses rangements (avec leur contenu) seront supprimés.'
       );
@@ -181,7 +182,7 @@ function renderGestionDetail(container, canWrite, refresh, { detail, pieces, cat
       return;
     }
     if (e.target.closest('[data-action="delete-rangement"]')) {
-      const ok = await confirmModal(
+      const ok = await confirmDrawer(
         `Supprimer « ${detail.nom} » ?`,
         lignes.length
           ? `Ce rangement et son contenu (${lignes.length} article${lignes.length > 1 ? 's' : ''}) seront supprimés.`
@@ -201,14 +202,14 @@ function renderGestionDetail(container, canWrite, refresh, { detail, pieces, cat
     }
     const delStock = e.target.closest('[data-action="delete-stock"]');
     if (delStock) {
-      const ok = await confirmModal(`Retirer « ${delStock.dataset.nom} » ?`, 'Cette ligne sera retirée du rangement.');
+      const ok = await confirmDrawer(`Retirer « ${delStock.dataset.nom} » ?`, 'Cette ligne sera retirée du rangement.');
       if (ok) deleteStock(delStock.dataset.id).then(refresh).catch((err) => alert(err.message));
     }
   };
 }
 
 function dialogAddPiece(onDone) {
-  openDialog('Ajouter une pièce', `
+  openDrawer('Ajouter une pièce', `
     <label class="field"><span>Nom</span><input type="text" name="nom" required autofocus placeholder="Cuisine, Salle de bain, Garage…" /></label>
   `, {
     onSubmit: async (fd) => {
@@ -221,7 +222,7 @@ function dialogAddPiece(onDone) {
 }
 
 function dialogAddRangement({ pieceId, pieceNom }, onDone) {
-  openDialog(`Ajouter un rangement · ${pieceNom}`, `
+  openDrawer(`Ajouter un rangement · ${pieceNom}`, `
     <label class="field"><span>Nom</span><input type="text" name="nom" required autofocus placeholder="Frigo, Placard du haut, Étagère…" /></label>
   `, {
     onSubmit: async (fd) => {
@@ -239,7 +240,7 @@ function dialogAddStock({ rangementId, rangementNom, catalogue }, onDone) {
     return;
   }
   const options = catalogue.map((a) => `<option value="${a.id}">${escapeHtml(a.nom)}</option>`).join('');
-  openDialog(`Ajouter un article · ${rangementNom}`, `
+  openDrawer(`Ajouter un article · ${rangementNom}`, `
     <label class="field"><span>Article</span><select name="article" required>${options}</select></label>
     <label class="field"><span>Quantité</span><input type="number" name="quantite" min="0" step="any" required value="1" /></label>
     <p class="field-hint">${UNIT_HINT}</p>
@@ -254,7 +255,7 @@ function dialogAddStock({ rangementId, rangementNom, catalogue }, onDone) {
 }
 
 function dialogEditStock({ id, nom, qty }, onDone) {
-  openDialog(`Ajuster · ${nom}`, `
+  openDrawer(`Ajuster · ${nom}`, `
     <label class="field"><span>Quantité</span><input type="number" name="quantite" min="0" step="any" required value="${qty}" autofocus /></label>
     <p class="field-hint">${UNIT_HINT}</p>
   `, {
@@ -313,14 +314,14 @@ async function renderCatalogue(container, canWrite, refresh) {
     const delBtn = e.target.closest('[data-action="delete-article"]');
     if (delBtn) {
       const nom = delBtn.dataset.nom;
-      const ok = await confirmModal(`Supprimer « ${nom} » du catalogue ?`, 'Il sera aussi retiré de tous les rangements où il apparaît.');
+      const ok = await confirmDrawer(`Supprimer « ${nom} » du catalogue ?`, 'Il sera aussi retiré de tous les rangements où il apparaît.');
       if (ok) deleteCatalogueItem(delBtn.dataset.id).then(refresh).catch((err) => alert(err.message));
     }
   };
 }
 
 function dialogArticle(existing, onDone) {
-  openDialog(existing ? "Modifier l'article" : 'Ajouter un article', `
+  openDrawer(existing ? "Modifier l'article" : 'Ajouter un article', `
     <label class="field"><span>Nom</span><input type="text" name="nom" required autofocus value="${existing ? escapeHtml(existing.nom) : ''}" /></label>
     <label class="field"><span>Quantité cible (stock plein, toute la maison)</span><input type="number" name="quantite_cible" min="1" step="any" required value="${existing ? existing.cible : 1}" /></label>
     <p class="field-hint">${UNIT_HINT}</p>
@@ -333,72 +334,6 @@ function dialogArticle(existing, onDone) {
       else await createCatalogueItem({ nom, quantite_cible });
       onDone();
     },
-  });
-}
-
-/* ── Dialogue générique (élément <dialog> natif) ── */
-function openDialog(title, bodyHtml, { onSubmit, submitLabel = 'Enregistrer' } = {}) {
-  const dlg = document.createElement('dialog');
-  dlg.className = 'app-dialog';
-  dlg.innerHTML = `
-    <form method="dialog" class="dialog-form">
-      <h3>${escapeHtml(title)}</h3>
-      ${bodyHtml}
-      <p class="dialog-error" hidden></p>
-      <div class="dialog-actions">
-        <button type="button" class="btn-ghost" data-close>Annuler</button>
-        <button type="submit" class="btn-primary">${escapeHtml(submitLabel)}</button>
-      </div>
-    </form>`;
-  document.body.appendChild(dlg);
-
-  const form = dlg.querySelector('form');
-  const errorEl = dlg.querySelector('.dialog-error');
-  dlg.querySelector('[data-close]').addEventListener('click', () => dlg.close());
-  dlg.addEventListener('close', () => dlg.remove());
-
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const submitBtn = form.querySelector('button[type="submit"]');
-    submitBtn.disabled = true;
-    try {
-      await onSubmit(new FormData(form));
-      dlg.close();
-    } catch (err) {
-      errorEl.textContent = err.message || 'Une erreur est survenue.';
-      errorEl.hidden = false;
-      submitBtn.disabled = false;
-    }
-  });
-
-  dlg.showModal();
-  return dlg;
-}
-
-// Remplace confirm() natif : modale stylée cohérente avec le design, message
-// contextuel (ce qui sera réellement supprimé). Résout à true/false.
-function confirmModal(title, message, { confirmLabel = 'Supprimer' } = {}) {
-  return new Promise((resolve) => {
-    const dlg = document.createElement('dialog');
-    dlg.className = 'app-dialog';
-    dlg.innerHTML = `
-      <div class="dialog-form dialog-form-confirm">
-        <div class="confirm-icon">${icon('alert-triangle')}</div>
-        <h3>${escapeHtml(title)}</h3>
-        <p class="dialog-sub">${escapeHtml(message)}</p>
-        <div class="dialog-actions">
-          <button type="button" class="btn-ghost" data-cancel>Annuler</button>
-          <button type="button" class="btn-danger" data-confirm>${escapeHtml(confirmLabel)}</button>
-        </div>
-      </div>`;
-    document.body.appendChild(dlg);
-
-    const finish = (result) => { dlg.close(); dlg.remove(); resolve(result); };
-    dlg.querySelector('[data-cancel]').addEventListener('click', () => finish(false));
-    dlg.querySelector('[data-confirm]').addEventListener('click', () => finish(true));
-    dlg.addEventListener('cancel', () => finish(false));
-
-    dlg.showModal();
   });
 }
 
