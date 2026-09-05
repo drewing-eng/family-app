@@ -16,17 +16,14 @@ export function listUsers() {
 // CLAUDE.md) : on pose "clair" ici pour ne pas laisser un compte fraîchement
 // créé sans thème. emailVisibility à true pour que l'email soit visible dans
 // la liste par les autres admins/membres (PocketBase le masque sinon).
-//
-// Pas de `verified: true` ici : c'est un champ protégé, et l'envoyer sans la
-// règle Manage posée côté PocketBase ne se contente pas d'être ignoré comme
-// pour un champ inconnu — ça fait échouer la création entière ("Failed to
-// create record."), constaté en conditions réelles. Retiré pour fiabiliser
-// la création ; à réintroduire uniquement une fois la règle Manage confirmée
-// active (voir CLAUDE.md).
+// verified à true (nécessite la règle Manage ci-dessus — sans elle, la
+// création entière échoue plutôt que d'ignorer juste ce champ, voir
+// historique git) : ces comptes sont créés à la main par un admin qui donne
+// les identifiants directement, pas un vrai flow d'inscription à confirmer.
 export function createUser({ name, email, password, role, apps_autorisees }) {
   return pb.collection('users').create({
     name, email, password, passwordConfirm: password, role, apps_autorisees,
-    theme: 'clair', emailVisibility: true,
+    theme: 'clair', emailVisibility: true, verified: true,
   });
 }
 

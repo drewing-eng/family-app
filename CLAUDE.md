@@ -379,14 +379,15 @@ par le superadmin, je ne peux pas les créer moi-même) pour que ces deux
 - Update : `@request.auth.role = "admin" || id = @request.auth.id`
 - Delete : `@request.auth.role = "admin"`
 
-⚠️ **`verified: true` retiré de `createUser()`** (tenté un temps, voir
-historique git) : l'envoyer sans la règle **Manage** posée côté PocketBase ne
-se contente pas d'être ignoré comme un champ inconnu — la création entière
-échouait ("Failed to create record."), constaté en conditions réelles. Les
-comptes créés depuis Admin restent donc `verified=false` (sans impact tant
-que "Only verified users can authenticate" reste désactivé sur la
-collection) ; ne pas réintroduire ce champ sans confirmer d'abord que la
-règle Manage (`@request.auth.role = "admin"`) est active.
+⚠️ **`verified: true` à la création (`createUser()`) nécessite en plus la
+règle Manage** (`@request.auth.role = "admin"`) — sans elle, l'envoyer ne se
+contente pas d'être ignoré comme un champ inconnu, la création entière
+échoue ("Failed to create record.", constaté en conditions réelles, voir
+historique git : le champ a été retiré puis réintroduit une fois la règle
+posée). Rappel : `verified` ne s'applique qu'aux comptes créés *après* la
+règle posée — un compte créé avant reste `verified=false`, il faut le
+modifier à la main (admin PocketBase) ou le recréer pour qu'il passe à
+`true`.
 
 ⚠️ **Si le module Admin ne montre que le compte connecté (pas les autres)** :
 la collection `users` créée via l'assistant PocketBase embarque souvent par
