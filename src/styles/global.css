@@ -298,9 +298,24 @@ h1, h2 { font-weight: 700; letter-spacing: -0.02em; }
 .stocks-reset-btn:hover:not(:disabled) { color: var(--accent); }
 .stocks-reset-btn:disabled { opacity: 0.4; cursor: default; }
 
-/* Ligne d'article en détail de rangement : nom+quantité/cible à gauche
-   (largeur fixe), barre de remplissage --accent au milieu, actions à droite
-   — même schéma que .tension-row mais en --accent (remplissage, pas alerte). */
+/* Ligne d'article en détail de rangement : sur mobile, nom+barre+actions sur
+   une seule ligne flex (héritée de .row) n'ont pas la place — la barre se
+   retrouvait écrasée entre le texte et les actions (retour utilisateur avec
+   capture). Grille en 2 lignes à la place : nom+actions sur la première,
+   barre pleine largeur sur la seconde — 2 lignes par article, pas plus,
+   pour ne pas rendre la liste illisible en l'empilant davantage. Desktop
+   repasse en une seule ligne (nom | barre | actions), inchangé. */
+.detail-row {
+  display: grid; grid-template-columns: 1fr auto; grid-template-areas: "label actions" "bar bar";
+  align-items: center; row-gap: 8px; column-gap: 12px;
+}
+.detail-row .row-label { grid-area: label; min-width: 0; }
+.detail-row .panel-head-actions { grid-area: actions; }
+.detail-row .detail-row-bar { grid-area: bar; }
+@media (min-width: 769px) {
+  .detail-row { grid-template-columns: auto 1fr auto; grid-template-areas: "label bar actions"; column-gap: 16px; }
+}
+
 .row-label { flex-shrink: 0; }
 .detail-row-bar { flex: 1; height: 6px; border-radius: 999px; background: var(--alt); }
 .detail-row-bar-fill { display: block; height: 100%; border-radius: 999px; background: var(--accent); }
