@@ -378,6 +378,16 @@ par le superadmin, je ne peux pas les créer moi-même) pour que ces deux
 - Create : `@request.auth.role = "admin"`
 - Update : `@request.auth.role = "admin" || id = @request.auth.id`
 - Delete : `@request.auth.role = "admin"`
+- **Manage rule** : `@request.auth.role = "admin"` — un cran au-dessus d'Update
+  dans PocketBase, nécessaire pour que `verified: true` (posé à la création
+  par `createUser()`, voir `lib/users.js`) soit accepté ; `verified` est un
+  champ protégé qu'un create/update normal ne peut pas modifier. Sans cette
+  règle, PocketBase l'ignore silencieusement et le compte reste
+  `verified=false` — sans impact tant que "Only verified users can
+  authenticate" reste désactivé sur la collection, mais à poser si tu veux
+  que les comptes créés depuis Admin soient marqués vérifiés dès le départ
+  (logique : c'est un admin qui les crée et donne les identifiants à la
+  main, pas un vrai flow d'inscription).
 
 Non testé contre `pb.libaxio.com` (comme le reste de l'app cette session,
 voir "Points encore ouverts") — en particulier, le changement d'email en
@@ -433,11 +443,15 @@ pour le détail des collections et de leurs règles d'API par rôle.
   optionnel, voir "Modèle de données PocketBase" ci-dessus ; le code
   l'envoie déjà mais rien n'est persisté tant que le champ n'existe pas.
 - **Règles d'API de la collection `users` pas confirmées côté PocketBase**
-  (List/View/Create/Update/Delete, voir "Rôles & auth" ci-dessus) —
-  nécessaires pour que le module Admin et Mon compte fonctionnent ; à poser
-  par le superadmin, et le flow de changement d'email en self-service
-  (mise à jour directe, pas de confirmation par lien) à vérifier en
-  conditions réelles.
+  (List/View/Create/Update/Delete/**Manage**, voir "Rôles & auth" ci-dessus) —
+  nécessaires pour que le module Admin et Mon compte fonctionnent, la règle
+  Manage en particulier pour que les comptes créés soient `verified=true` ;
+  à poser par le superadmin. Confirmé en conditions réelles : sans Manage,
+  `verified` reste silencieusement à `false` (comportement PocketBase
+  normal pour un champ protégé), sans empêcher la connexion tant que "Only
+  verified users can authenticate" reste désactivé. Le flow de changement
+  d'email en self-service (mise à jour directe, pas de confirmation par
+  lien) reste, lui, à vérifier en conditions réelles.
 - URL de production de family-menu, pour l'iframe (chantier 4).
 - Audit complet des règles d'API PocketBase par rôle (chantier 5) — les
   règles de base sont posées collection par collection au fil des
