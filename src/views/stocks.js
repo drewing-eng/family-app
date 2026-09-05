@@ -51,6 +51,7 @@ async function renderGestion(container, canWrite, refresh) {
 
 function renderGestionList(container, canWrite, refresh, { catalogue, pieces, rangements, stocks }) {
   const totals = totalsByArticle(stocks);
+  const catalogueById = new Map(catalogue.map((a) => [a.id, a]));
   let html = '';
 
   // Tension globale : somme d'un article dans toute la maison vs sa cible catalogue.
@@ -78,31 +79,53 @@ function renderGestionList(container, canWrite, refresh, { catalogue, pieces, ra
   } else {
     pieces.forEach((piece) => {
       const piecesRangements = rangements.filter((r) => r.piece === piece.id);
-      html += `<div class="panel">
-        <div class="panel-head">
-          <span class="panel-head-title">${escapeHtml(piece.nom)}</span>
+      html += `<div class="piece-block">
+        <div class="piece-head">
+          <span class="piece-head-title">${escapeHtml(piece.nom)}</span>
           ${
             canWrite
-              ? `<span class="panel-head-actions"><button class="btn-ghost small" data-action="add-rangement" data-piece="${piece.id}" data-piece-nom="${escapeHtml(piece.nom)}">+ Rangement</button><button class="link-danger" data-action="delete-piece" data-id="${piece.id}" data-nom="${escapeHtml(piece.nom)}">Supprimer</button></span>`
+              ? `<span class="piece-head-actions"><button class="link-accent" data-action="add-rangement" data-piece="${piece.id}" data-piece-nom="${escapeHtml(piece.nom)}">+ Rangement</button><button class="link-muted" data-action="delete-piece" data-id="${piece.id}" data-nom="${escapeHtml(piece.nom)}">Supprimer</button></span>`
               : ''
           }
-        </div>
-        <div class="panel-body" style="padding-top:4px;">`;
+        </div>`;
 
       if (!piecesRangements.length) {
-        html += `<p class="row-note" style="padding:6px 0;">Aucun rangement dans cette pièce.</p>`;
+        html += `<p class="row-note piece-empty">Aucun rangement dans cette pièce.</p>`;
       } else {
-        html += '<div class="rangement-list">';
+        html += '<div class="rangecard-grid">';
         piecesRangements.forEach((rangement) => {
-          const count = stocks.filter((s) => s.rangement === rangement.id).length;
-          html += `<button class="row rangement-row" data-action="open-rangement" data-id="${rangement.id}">
-            <span><span class="row-text">${escapeHtml(rangement.nom)}</span><span class="row-note">${count ? `${count} article${count > 1 ? 's' : ''}` : 'Vide'}</span></span>
-            <span class="chevron-ic">${icon('chevron-right')}</span>
+          const lignes = stocks.filter((s) => s.rangement === rangement.id);
+          let tensionCount = 0;
+          let sumQty = 0;
+          let sumCible = 0;
+          lignes.forEach((l) => {
+            const art = catalogueById.get(l.article);
+            if (!art) return;
+            if (isTension(totals.get(art.id) || 0, art.quantite_cible)) tensionCount++;
+            sumQty += l.quantite;
+            sumCible += art.quantite_cible;
+          });
+          const pct = sumCible > 0 ? Math.min(100, Math.round((sumQty / sumCible) * 100)) : 0;
+          html += `<button class="rangecard" data-action="open-rangement" data-id="${rangement.id}">
+            <span class="rangecard-ic">${icon('box')}</span>
+            <span class="rangecard-title">${escapeHtml(rangement.nom)}</span>
+            <span class="rangecard-stats">
+              <span class="rangecard-stat"><span class="rangecard-stat-n">${lignes.length}</span><span class="rangecard-stat-lbl">Article${lignes.length > 1 ? 's' : ''}</span></span>
+              <span class="rangecard-stat"><span class="rangecard-stat-n${tensionCount > 0 ? ' warn' : ''}">${tensionCount}</span><span class="rangecard-stat-lbl">En tension</span></span>
+            </span>
+            ${
+              lignes.length
+                ? `<span class="rangecard-bar">
+              <span class="rangecard-bar-head"><span>Rempli</span><span>${pct}%</span></span>
+              <span class="rangecard-bar-track"><span class="rangecard-bar-fill" style="width:${pct}%"></span></span>
+            </span>`
+                : ''
+            }
           </button>`;
         });
         html += '</div>';
       }
-      html += '</div></div>';
+      html += '</div>';
     });
   }
 
@@ -148,7 +171,7 @@ function renderGestionDetail(container, canWrite, refresh, { detail, pieces, cat
     </div>
     ${
       canWrite
-        ? `<div class="section-head-actions"><button class="btn-ghost small" data-action="add-stock">+ Article</button><button class="icon-btn" data-action="delete-rangement" title="Supprimer">${icon('trash')}</button></div>`
+        ? `<div class="section-head-actions"><button class="link-accent" data-action="add-stock">+ Article</button><button class="icon-btn" data-action="delete-rangement" title="Supprimer">${icon('trash')}</button></div>`
         : ''
     }
   </div>
@@ -163,7 +186,7 @@ function renderGestionDetail(container, canWrite, refresh, { detail, pieces, cat
       <div><div class="row-text">${article ? escapeHtml(article.nom) : '(article supprimé)'}</div><div class="row-note">${ligne.quantite}</div></div>
       ${
         canWrite
-          ? `<span class="panel-head-actions"><button class="btn-ghost small" data-action="edit-stock" data-id="${ligne.id}" data-nom="${article ? escapeHtml(article.nom) : ''}" data-qty="${ligne.quantite}">Ajuster</button><button class="link-danger" data-action="delete-stock" data-id="${ligne.id}" data-nom="${article ? escapeHtml(article.nom) : ''}">Retirer</button></span>`
+          ? `<span class="panel-head-actions"><button class="link-accent" data-action="edit-stock" data-id="${ligne.id}" data-nom="${article ? escapeHtml(article.nom) : ''}" data-qty="${ligne.quantite}">Ajuster</button><button class="link-muted" data-action="delete-stock" data-id="${ligne.id}" data-nom="${article ? escapeHtml(article.nom) : ''}">Retirer</button></span>`
           : ''
       }
     </div>`;
@@ -291,7 +314,7 @@ async function renderCatalogue(container, canWrite, refresh) {
           <span class="row-note">cible : ${item.quantite_cible}</span>
           ${
             canWrite
-              ? `<button class="btn-ghost small" data-action="edit-article" data-id="${item.id}" data-nom="${escapeHtml(item.nom)}" data-cible="${item.quantite_cible}">Modifier</button><button class="link-danger" data-action="delete-article" data-id="${item.id}" data-nom="${escapeHtml(item.nom)}">Supprimer</button>`
+              ? `<button class="link-accent" data-action="edit-article" data-id="${item.id}" data-nom="${escapeHtml(item.nom)}" data-cible="${item.quantite_cible}">Modifier</button><button class="link-muted" data-action="delete-article" data-id="${item.id}" data-nom="${escapeHtml(item.nom)}">Supprimer</button>`
               : ''
           }
         </span>

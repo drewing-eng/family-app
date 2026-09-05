@@ -221,22 +221,55 @@ h1, h2 { font-weight: 700; letter-spacing: -0.02em; }
 .btn-ghost:hover { color: var(--accent); border-color: var(--accent); }
 .btn-ghost.small { padding: 5px 12px; font-size: 0.78rem; }
 
-.link-danger {
-  font-family: inherit; font-size: 0.76rem; font-weight: 600; color: var(--danger);
+/* Liens d'action sans bordure ni fond : --accent pour une action positive
+   (ajouter/modifier/ajuster), --muted pour ce qui déclenche une suppression
+   (le rouge --danger reste réservé au bouton de confirmation final dans le
+   tiroir — jamais sur le déclencheur lui-même, cf. maquette de référence). */
+.link-accent {
+  font-family: inherit; font-size: 0.78rem; font-weight: 700; color: var(--accent);
   background: none; border: none; padding: 2px 4px;
 }
-.link-danger:hover { text-decoration: underline; }
-
-/* Liste → détail (vue Gestion) : un rangement est une ligne cliquable dans
-   sa pièce, le contenu (articles) ne s'affiche que dans la vue détail. */
-.rangement-list { display: flex; flex-direction: column; }
-.rangement-row {
-  width: 100%; border: none; background: none; cursor: pointer; font-family: inherit;
-  border-radius: var(--radius-sm);
+.link-muted {
+  font-family: inherit; font-size: 0.76rem; font-weight: 600; color: var(--muted);
+  background: none; border: none; padding: 2px 4px;
 }
-.rangement-row:hover { background: var(--alt); }
-.chevron-ic { display: inline-flex; color: var(--muted); }
-.chevron-ic .ic-svg { width: 18px; height: 18px; }
+.link-muted:hover { color: var(--text); }
+
+/* Vue Gestion : une pièce est un simple en-tête (pas de carte) suivi d'une
+   grille de cartes de rangement — cf. .rangecard plus bas. */
+.piece-block { margin-bottom: 26px; }
+.piece-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.piece-head-title { font-size: 0.95rem; font-weight: 700; }
+.piece-head-actions { display: flex; align-items: center; gap: 14px; }
+.piece-empty { padding: 4px 0; }
+
+/* Carte de liste (rangement) : icône en chip, deux mini-stats, barre de
+   progression seulement si le rangement contient au moins un article (jamais
+   une barre sans donnée réelle derrière — cf. design-systeme.md). */
+.rangecard-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+@media (min-width: 769px) { .rangecard-grid { grid-template-columns: repeat(3, 1fr); } }
+
+.rangecard {
+  text-align: left; border: none; background: var(--panel); box-shadow: var(--shadow-float);
+  border-radius: var(--radius); padding: 18px; display: flex; flex-direction: column;
+  font-family: inherit; color: var(--text);
+}
+.rangecard-ic {
+  width: 40px; height: 40px; border-radius: var(--radius-xs);
+  background: var(--accent-soft); color: var(--accent); font-size: 1.1rem;
+  display: inline-flex; align-items: center; justify-content: center; margin-bottom: 14px;
+}
+.rangecard-title { font-size: 0.92rem; font-weight: 700; }
+.rangecard-stats { display: flex; gap: 20px; margin-top: 12px; }
+.rangecard-stat { display: flex; flex-direction: column; }
+.rangecard-stat-n { font-size: 0.92rem; font-weight: 800; color: var(--muted); }
+.rangecard-stat:first-child .rangecard-stat-n { color: var(--text); }
+.rangecard-stat-n.warn { color: var(--warn); }
+.rangecard-stat-lbl { font-size: 0.68rem; color: var(--muted); }
+.rangecard-bar { margin-top: 14px; }
+.rangecard-bar-head { display: flex; justify-content: space-between; font-size: 0.68rem; color: var(--muted); margin-bottom: 4px; }
+.rangecard-bar-track { height: 6px; border-radius: 999px; background: var(--alt); }
+.rangecard-bar-fill { display: block; height: 100%; border-radius: 999px; background: var(--accent); }
 
 .detail-back {
   display: inline-flex; align-items: center; gap: 6px; border: none; background: none;
