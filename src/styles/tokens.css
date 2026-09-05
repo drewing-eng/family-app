@@ -1,62 +1,72 @@
 /*
- * Design tokens — repris à l'identique du design system actuel de family-menu
- * (dépôt drewing-eng/family-menu, branche main, public/style.css).
- *
- * ATTENTION : family-menu a plusieurs branches avec des designs différents et
- * obsolètes (thème crème/terracotta/Georgia). Seule la branche `main` fait foi.
- * Ne jamais réintroduire ce thème crème par erreur.
- *
- * family-menu n'a pas de mode sombre : le bloc [data-theme="dark"] ci-dessous
- * est une extension propre à GAUTIER Family, à valider visuellement au fil de l'eau.
+ * Design tokens — voir design-systeme.md (racine du dépôt) pour la référence
+ * complète et la maquette cliquable qu'il cite. Remplace l'ancienne base
+ * "identique à family-menu" (fond blanc uni, accent indigo #5b5bd4) —
+ * décision explicite de l'utilisateur, voir CLAUDE.md § Design system.
  */
 :root {
-  --bg: #ffffff;
-  --surface: #ffffff;
-  --surface2: #f5f5f5;
-  --border: #ebebeb;
-  --text: #111110;
-  --text-muted: #9f9f9f;
-  --accent: #5b5bd4;
-  --accent-light: #edeafc;
-  --lavender: #4a3a9e;
-  --green: #347a34;   --green-light: #eaf5ea;
-  --orange: #b86800;  --orange-light: #fef3e2;
-  --red: #c0392b;     --red-light: #fde8e6;
-  --blue: #1d6fa8;    --blue-light: #e2eef8;
-  --midi-bg: #edf7ed;
-  --soir-bg: #ede8f8;
+  --canvas: #F3F5FB;      /* fond de page, très pâle */
+  --panel: #FFFFFF;       /* cartes/blocs qui flottent sur le canvas, sidebar */
+  --alt: #F5F6FC;         /* fond secondaire : inputs, sous-blocs, badges neutres */
+  --line: #ECEEF8;        /* séparateurs internes, quasi invisibles */
+  --text: #1B2036;
+  --muted: #8B90A8;
 
-  --radius: 18px;
-  --radius-sm: 10px;
-  --radius-pill: 999px;
-  --shadow: 0 2px 12px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.05);
+  --accent: #384CEA;      /* module par défaut (Accueil/Menus) */
+  --accent-soft: #E5E8FC;
 
-  /* état "actif" de la navigation (pilule noire, comme .nav-top .tab-btn.active) */
-  --nav-active-bg: #111110;
-  --nav-active-fg: #ffffff;
+  --good: #2F9E58;        /* sémantique, indépendant de l'accent/module */
+  --warn: #D2691E;
+  --danger: #D64545;
+
+  /* Rayons : généreux mais toujours rectangulaires, jamais de pilule pleine. */
+  --radius-xs: 12px;   /* petites icônes en chip, badges de compteur */
+  --radius-sm: 16px;   /* boutons, champs de formulaire, item de nav, sous-onglets */
+  --radius: 20px;      /* cartes et panels de contenu */
+  --radius-lg: 24px;   /* tiroir, gros blocs */
+
+  /* Ombres : jamais par défaut (séparation par la couleur de fond) ; ce jeton
+     n'est utilisé que pour un élément qui doit vraiment se détacher du reste
+     (tiroir, barre de sous-onglets flottante). */
+  --shadow-float: 0 8px 30px rgba(30, 40, 90, 0.12);
 }
 
+/* Couleur par module : redéfinit --accent/--accent-soft/--canvas sur l'élément
+   racine de l'app (attribut data-module posé par shell.js) ; tout le reste de
+   l'UI référence déjà ces trois jetons, donc rien d'autre à changer par
+   composant. Accueil et Menus n'ont pas de bloc dédié : ils gardent le bleu
+   ci-dessus par défaut. */
+#app[data-module="stocks"] {
+  --accent: #C2660C;
+  --accent-soft: #FBE7D2;
+  --canvas: #FBF3E9;
+}
+#app[data-module="finance"] {
+  --accent: #1F8F55;
+  --accent-soft: #DBF2E4;
+  --canvas: #EEF8F1;
+}
+
+/*
+ * Mode sombre — dérivation rapide des jetons ci-dessus pour ne pas casser la
+ * fonctionnalité existante (voir src/lib/theme.js). Palette non définitive :
+ * un vrai passage dédié est prévu (chantier "mode sombre" dans le plan de
+ * mise à jour du design), y compris la déclinaison par module. Ne pas
+ * considérer ces valeurs comme validées visuellement.
+ */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #131215; --surface: #1c1b1f; --surface2: #242327; --border: #322f36;
-    --text: #f2f1f4; --text-muted: #99969f; --accent: #8f8ff2; --accent-light: #2c2a4d;
-    --lavender: #b6acf5;
-    --green: #6bbf6f; --green-light: #1c2e1c; --orange: #e0a542; --orange-light: #332a15;
-    --red: #e5766a;   --red-light: #3a2220;   --blue: #6fa9dd; --blue-light: #1c2c3a;
-    --midi-bg: #1b2a1c; --soir-bg: #29233f;
-    --shadow: 0 2px 14px rgba(0, 0, 0, 0.4);
-    --nav-active-bg: #f2f1f4;
-    --nav-active-fg: #131215;
+    --canvas: #15171F; --panel: #1D2029; --alt: #262A36; --line: #323747;
+    --text: #EDEEF5; --muted: #8D93AC;
+    --accent: #8C9AF5; --accent-soft: #2A2F52;
+    --good: #5CBF82; --warn: #E0955A; --danger: #E4807A;
+    --shadow-float: 0 8px 30px rgba(0, 0, 0, 0.45);
   }
 }
 :root[data-theme="dark"] {
-  --bg: #131215; --surface: #1c1b1f; --surface2: #242327; --border: #322f36;
-  --text: #f2f1f4; --text-muted: #99969f; --accent: #8f8ff2; --accent-light: #2c2a4d;
-  --lavender: #b6acf5;
-  --green: #6bbf6f; --green-light: #1c2e1c; --orange: #e0a542; --orange-light: #332a15;
-  --red: #e5766a;   --red-light: #3a2220;   --blue: #6fa9dd; --blue-light: #1c2c3a;
-  --midi-bg: #1b2a1c; --soir-bg: #29233f;
-  --shadow: 0 2px 14px rgba(0, 0, 0, 0.4);
-  --nav-active-bg: #f2f1f4;
-  --nav-active-fg: #131215;
+  --canvas: #15171F; --panel: #1D2029; --alt: #262A36; --line: #323747;
+  --text: #EDEEF5; --muted: #8D93AC;
+  --accent: #8C9AF5; --accent-soft: #2A2F52;
+  --good: #5CBF82; --warn: #E0955A; --danger: #E4807A;
+  --shadow-float: 0 8px 30px rgba(0, 0, 0, 0.45);
 }
