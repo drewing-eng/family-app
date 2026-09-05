@@ -144,8 +144,9 @@ jamais été créées côté serveur : rien à migrer, ce schéma-ci est le seul
 structuré, pas de conversion) — `catalogue.unite` est un texte libre optionnel
 posé par article (g, kg, ml, L, pièces…), affiché tel quel partout où sa
 quantité apparaît (catalogue, panel de tension, détail de rangement). Tant
-qu'un article n'a pas ce champ renseigné, l'interface retombe sur un simple
-rappel textuel générique.
+qu'un article n'a pas ce champ renseigné, l'interface n'affiche simplement
+aucune unité pour lui (aucun rappel générique — décision explicite, ce texte
+gênait plus qu'il n'aidait).
 
 ⚠️ **`catalogue.unite` n'existe pas encore côté PocketBase** — comme pour le
 reste du schéma, seul le superadmin peut l'ajouter (moi je ne peux pas). Le

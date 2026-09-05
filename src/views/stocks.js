@@ -10,13 +10,6 @@ import { pb } from '../lib/pocketbase.js';
 import { icon } from '../lib/icons.js';
 import { openDrawer, confirmDrawer } from '../lib/drawer.js';
 
-// Pas d'unité structurée en base à l'origine (décision produit initiale) ;
-// `catalogue.unite` (texte libre, optionnel — à créer côté PocketBase par le
-// superadmin, voir CLAUDE.md) permet depuis de fixer une unité par article,
-// affichée partout où sa quantité apparaît. Ce rappel reste affiché comme
-// repli tant qu'un article n'a pas d'unité renseignée.
-const UNIT_HINT = "Unité libre : g, kg, ml, L, pièces… Renseigne-la sur l'article dans le catalogue pour qu'elle s'affiche partout, sinon reste au moins cohérent d'une saisie à l'autre.";
-
 // Rangement actuellement ouvert en vue détail (liste → détail, comme
 // Chest_gestion) ; persiste tant qu'on reste sur l'onglet Stocks, réinitialisé
 // seulement via le bouton Retour ou si le rangement n'existe plus.
@@ -79,7 +72,8 @@ function renderGestionList(container, canWrite, refresh, { catalogue, totals, pi
     // Tension globale : somme d'un article dans toute la maison vs sa cible catalogue.
     const tenseItems = catalogue.filter((a) => isTension(totals.get(a.id) || 0, a.quantite_cible));
     if (tenseItems.length) {
-      html += `<div class="panel"><div class="panel-head"><span class="panel-head-title">Articles en tension</span><span class="badge accent">${tenseItems.length}</span></div><div class="panel-body" style="padding-top:8px;">`;
+      html += `<div class="panel"><div class="panel-body">
+        <div class="tension-panel-head"><span class="panel-head-title">Articles en tension</span><span class="badge accent">${tenseItems.length}</span></div>`;
       tenseItems.forEach((a) => {
         const total = totals.get(a.id) || 0;
         const pct = Math.max(0, Math.min(100, (total / a.quantite_cible) * 100));
@@ -92,8 +86,6 @@ function renderGestionList(container, canWrite, refresh, { catalogue, totals, pi
       });
       html += '</div></div>';
     }
-
-    html += `<p class="unit-hint">${UNIT_HINT}</p>`;
 
     html += `<div class="stocks-toolbar">
       <div class="stocks-search">
@@ -388,7 +380,8 @@ function dialogAddStock({ rangementId, rangementNom, catalogue }, onDone) {
   const hint = document.getElementById('stockUnitHint');
   const syncHint = () => {
     const unite = select.selectedOptions[0]?.dataset.unite;
-    hint.textContent = unite ? `Unité : ${unite}` : UNIT_HINT;
+    hint.textContent = unite ? `Unité : ${unite}` : '';
+    hint.hidden = !unite;
   };
   select.addEventListener('change', syncHint);
   syncHint();
@@ -397,7 +390,7 @@ function dialogAddStock({ rangementId, rangementNom, catalogue }, onDone) {
 function dialogEditStock({ id, nom, qty, unite }, onDone) {
   openDrawer(`Ajuster · ${nom}`, `
     <label class="field"><span>Quantité</span><input type="number" name="quantite" min="0" step="any" required value="${qty}" autofocus /></label>
-    <p class="field-hint">${unite ? `Unité : ${escapeHtml(unite)}` : UNIT_HINT}</p>
+    ${unite ? `<p class="field-hint">Unité : ${escapeHtml(unite)}</p>` : ''}
   `, {
     onSubmit: async (fd) => {
       const quantite = Number(fd.get('quantite'));
@@ -416,7 +409,6 @@ function renderCatalogue(container, canWrite, refresh, items) {
     </div>
     ${canWrite ? `<div class="section-head-actions"><button class="btn-primary small" data-action="add-article">+ Ajouter un article</button></div>` : ''}
   </div>`;
-  html += `<p class="unit-hint">${UNIT_HINT}</p>`;
 
   if (!items.length) {
     html += emptyState('book', 'Catalogue vide', canWrite ? 'Ajoute le premier article du catalogue.' : 'Aucun article pour l’instant.');

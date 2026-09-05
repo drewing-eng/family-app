@@ -69,7 +69,7 @@ h1, h2 { font-weight: 700; letter-spacing: -0.02em; }
   font-family: inherit; font-size: 0.9rem; font-weight: 500; padding: 10px 16px;
 }
 .side-item .ic { font-size: 1rem; display: inline-flex; align-items: center; }
-.side-item:hover:not(:disabled) { color: var(--text); background: var(--alt); }
+.side-item:hover:not(:disabled) { color: var(--text); background: var(--accent-soft); }
 .side-item.active { color: var(--accent); background: var(--accent-soft); font-weight: 600; }
 .side-item:disabled { opacity: 0.45; cursor: default; }
 .side-item .soon { margin-left: auto; font-size: 0.62rem; font-style: italic; color: var(--muted); }
@@ -125,7 +125,7 @@ h1, h2 { font-weight: 700; letter-spacing: -0.02em; }
   background: none; border: none; padding: 8px 16px; border-radius: var(--radius-sm);
   transition: background 0.15s, color 0.15s;
 }
-.tab-btn:hover { background: var(--alt); color: var(--text); }
+.tab-btn:hover { background: var(--accent-soft); color: var(--text); }
 .tab-btn.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
 
 .subtabs-desktop { display: none; align-items: center; gap: 4px; }
@@ -202,6 +202,12 @@ h1, h2 { font-weight: 700; letter-spacing: -0.02em; }
 .panel-head-title { font-size: 0.92rem; font-weight: 700; letter-spacing: -0.01em; }
 .panel-head-actions { display: flex; align-items: center; gap: 10px; }
 
+/* En-tête du panel "Articles en tension" : contrairement à .panel-head (bandeau
+   --alt + bordure, réservé aux panels à sections type détail de rangement),
+   celui-ci reste sur le même fond blanc que le reste du panel — comme la
+   maquette, un seul bloc plat, pas de bandeau. */
+.tension-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+
 .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); }
 .row:first-child { border-top: none; }
 .row-text { font-size: 0.92rem; font-weight: 600; }
@@ -222,10 +228,9 @@ h1, h2 { font-weight: 700; letter-spacing: -0.02em; }
 .tension-bar-fill { display: block; height: 100%; border-radius: 999px; background: var(--warn); }
 .tension-count { flex-shrink: 0; font-size: 0.8rem; color: var(--muted); }
 
-.unit-hint, .field-hint {
-  font-size: 0.76rem; color: var(--muted); font-style: italic; margin: 0 0 14px;
+.field-hint {
+  font-size: 0.76rem; color: var(--muted); font-style: italic; margin: -6px 0 0;
 }
-.field-hint { margin: -6px 0 0; }
 
 /* ══════════════ RECHERCHE + FILTRE (Gestion — Liste) ══════════════ */
 .stocks-toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 26px; flex-wrap: wrap; }

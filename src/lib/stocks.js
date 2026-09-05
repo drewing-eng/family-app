@@ -1,8 +1,8 @@
 import { pb } from './pocketbase.js';
 
-// Les quantités n'ont pas d'unité structurée en base (décision produit :
-// une simple mention dans l'interface — g/kg/ml/L/pièces — suffit, pas de
-// champ "unité" par article pour l'instant). Voir UNIT_HINT dans stocks.js (vue).
+// `quantite`/`quantite_cible` restent de simples nombres (pas de type "unité"
+// structuré) ; `catalogue.unite` (texte libre, optionnel) porte l'unité
+// affichée à côté de ces nombres — voir CLAUDE.md § Modèle de données.
 
 export function isTension(total, cible) {
   return cible > 0 && total / cible < 0.2;
