@@ -3,13 +3,10 @@ import { pb } from './pocketbase.js';
 // ── Module Admin : gestion des comptes (liste/création/modification/suppression) ──
 // Règles d'API PocketBase requises sur la collection `users` (à poser par le
 // superadmin, voir CLAUDE.md) :
-// - List/View   : @request.auth.role = "admin" || @request.auth.role = "membre"
-// - Create      : @request.auth.role = "admin"
-// - Update      : @request.auth.role = "admin" || id = @request.auth.id   (soi-même, pour Mon compte)
-// - Delete      : @request.auth.role = "admin"
-// - Manage rule : @request.auth.role = "admin"   (nécessaire pour que verified: true
-//                 ci-dessous soit accepté — c'est un champ protégé, un create/update
-//                 normal ne suffit pas, voir CLAUDE.md)
+// - List/View : @request.auth.role = "admin" || @request.auth.role = "membre"
+// - Create    : @request.auth.role = "admin"
+// - Update    : @request.auth.role = "admin" || id = @request.auth.id   (soi-même, pour Mon compte)
+// - Delete    : @request.auth.role = "admin"
 
 export function listUsers() {
   return pb.collection('users').getFullList({ sort: 'name' });
@@ -19,15 +16,17 @@ export function listUsers() {
 // CLAUDE.md) : on pose "clair" ici pour ne pas laisser un compte fraîchement
 // créé sans thème. emailVisibility à true pour que l'email soit visible dans
 // la liste par les autres admins/membres (PocketBase le masque sinon).
-// verified à true : ces comptes sont créés à la main par un admin qui donne
-// les identifiants directement (pas un vrai flow d'inscription/e-mail de
-// confirmation) — nécessite le manageRule ci-dessus, sinon PocketBase ignore
-// silencieusement ce champ et le compte reste verified=false (sans impact
-// tant que "Only verified users can authenticate" reste désactivé).
+//
+// Pas de `verified: true` ici : c'est un champ protégé, et l'envoyer sans la
+// règle Manage posée côté PocketBase ne se contente pas d'être ignoré comme
+// pour un champ inconnu — ça fait échouer la création entière ("Failed to
+// create record."), constaté en conditions réelles. Retiré pour fiabiliser
+// la création ; à réintroduire uniquement une fois la règle Manage confirmée
+// active (voir CLAUDE.md).
 export function createUser({ name, email, password, role, apps_autorisees }) {
   return pb.collection('users').create({
     name, email, password, passwordConfirm: password, role, apps_autorisees,
-    theme: 'clair', emailVisibility: true, verified: true,
+    theme: 'clair', emailVisibility: true,
   });
 }
 
