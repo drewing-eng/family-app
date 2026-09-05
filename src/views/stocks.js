@@ -57,7 +57,7 @@ function renderGestionList(container, canWrite, refresh, { catalogue, pieces, ra
   // Tension globale : somme d'un article dans toute la maison vs sa cible catalogue.
   const tenseItems = catalogue.filter((a) => isTension(totals.get(a.id) || 0, a.quantite_cible));
   if (tenseItems.length) {
-    html += `<div class="panel"><div class="panel-head"><span class="panel-head-title">Articles en tension</span><span class="badge red">${tenseItems.length}</span></div><div class="panel-body" style="padding-top:8px;">`;
+    html += `<div class="panel"><div class="panel-head"><span class="panel-head-title">Articles en tension</span><span class="badge accent">${tenseItems.length}</span></div><div class="panel-body" style="padding-top:8px;">`;
     tenseItems.forEach((a) => {
       html += `<div class="row"><span class="row-text">${escapeHtml(a.nom)}</span><span class="gluco eleve"><span class="gluco-dot"></span>${totals.get(a.id) || 0} / ${a.quantite_cible}</span></div>`;
     });

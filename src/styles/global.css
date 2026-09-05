@@ -202,7 +202,10 @@ h1, h2 { font-weight: 700; letter-spacing: -0.02em; }
 .row-note { font-size: 0.76rem; color: var(--muted); margin-top: 2px; font-weight: 400; display: block; }
 
 .badge { display: inline-flex; align-items: center; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; padding: 3px 10px; border-radius: var(--radius-xs); }
-.badge.red { background: color-mix(in srgb, var(--danger) 15%, var(--panel)); color: var(--danger); }
+/* Compteur mis en avant (ex. nombre d'articles en tension) : fond --accent
+   plein + texte blanc, comme la maquette — jamais une teinte --danger, qui
+   est réservée aux indicateurs factuels sémantiques (cf. .gluco.eleve). */
+.badge.accent { background: var(--accent); color: #fff; }
 
 .gluco { display: inline-flex; align-items: center; gap: 5px; font-size: 0.72rem; font-weight: 600; padding: 3px 10px; border-radius: var(--radius-xs); }
 .gluco.eleve { background: color-mix(in srgb, var(--warn) 18%, var(--panel)); color: var(--warn); }
