@@ -204,12 +204,17 @@ h1, h2 { font-weight: 700; letter-spacing: -0.02em; }
 .badge { display: inline-flex; align-items: center; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; padding: 3px 10px; border-radius: var(--radius-xs); }
 /* Compteur mis en avant (ex. nombre d'articles en tension) : fond --accent
    plein + texte blanc, comme la maquette — jamais une teinte --danger, qui
-   est réservée aux indicateurs factuels sémantiques (cf. .gluco.eleve). */
+   est réservée aux indicateurs factuels sémantiques (cf. .tension-bar-fill). */
 .badge.accent { background: var(--accent); color: #fff; }
 
-.gluco { display: inline-flex; align-items: center; gap: 5px; font-size: 0.72rem; font-weight: 600; padding: 3px 10px; border-radius: var(--radius-xs); }
-.gluco.eleve { background: color-mix(in srgb, var(--warn) 18%, var(--panel)); color: var(--warn); }
-.gluco-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+/* Ligne du panel "Articles en tension" : nom fixe à gauche, barre de
+   progression qui prend l'espace restant, quantité fixe à droite — comme les
+   lignes de détail d'un rangement, mais avec un remplissage --warn (indicateur
+   factuel sémantique) plutôt que --accent. */
+.tension-row .row-text { flex-shrink: 0; }
+.tension-bar { flex: 1; height: 4px; border-radius: 999px; background: var(--alt); }
+.tension-bar-fill { display: block; height: 100%; border-radius: 999px; background: var(--warn); }
+.tension-count { flex-shrink: 0; font-size: 0.8rem; color: var(--muted); }
 
 .unit-hint, .field-hint {
   font-size: 0.76rem; color: var(--muted); font-style: italic; margin: 0 0 14px;

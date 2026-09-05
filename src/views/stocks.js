@@ -59,7 +59,13 @@ function renderGestionList(container, canWrite, refresh, { catalogue, pieces, ra
   if (tenseItems.length) {
     html += `<div class="panel"><div class="panel-head"><span class="panel-head-title">Articles en tension</span><span class="badge accent">${tenseItems.length}</span></div><div class="panel-body" style="padding-top:8px;">`;
     tenseItems.forEach((a) => {
-      html += `<div class="row"><span class="row-text">${escapeHtml(a.nom)}</span><span class="gluco eleve"><span class="gluco-dot"></span>${totals.get(a.id) || 0} / ${a.quantite_cible}</span></div>`;
+      const total = totals.get(a.id) || 0;
+      const pct = Math.max(0, Math.min(100, (total / a.quantite_cible) * 100));
+      html += `<div class="row tension-row">
+        <span class="row-text">${escapeHtml(a.nom)}</span>
+        <div class="tension-bar"><div class="tension-bar-fill" style="width:${pct}%"></div></div>
+        <span class="tension-count">${total} / ${a.quantite_cible}</span>
+      </div>`;
     });
     html += '</div></div>';
   }
