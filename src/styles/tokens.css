@@ -26,13 +26,14 @@
   --radius-lg: 24px;   /* tiroir, gros blocs */
 
   /* Ombre douce et discrète, appliquée par défaut à toute carte/panel qui
-     flotte sur le canvas — jamais un shadow-lg ou équivalent marqué, mais
-     doit rester perceptible (0.05 s'est révélé invisible à l'usage réel).
-     Flou volontairement contenu à 10px : c'est ce qui l'empêche de déborder
+     flotte sur le canvas — jamais un shadow-lg ou équivalent marqué.
+     Rollback explicite : le passage à 0.12 rendait les cartes (rangecard,
+     tile, panel) trop marquées à l'usage réel ; 0.05 était le bon réglage,
+     y compris pour la carte du tiroir (qui était déjà satisfaisante avec
+     cette valeur). Flou contenu à 10px : c'est ce qui l'empêche de déborder
      de la marge de 12px autour de la carte du tiroir (voir #drawer, qui la
-     clippe avec overflow:hidden) — ne pas remonter le flou sans reverifier
-     ce cas précis. */
-  --shadow-float: 0 8px 10px rgba(30, 40, 90, 0.12);
+     clippe avec overflow:hidden). */
+  --shadow-float: 0 8px 10px rgba(30, 40, 90, 0.05);
 }
 
 /* Couleur par module : redéfinit --accent/--accent-soft/--canvas sur l'élément

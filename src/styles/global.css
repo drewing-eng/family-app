@@ -268,12 +268,10 @@ h1, h2 { font-weight: 700; letter-spacing: -0.02em; }
 .rangecard-stat-lbl { font-size: 0.68rem; color: var(--muted); }
 .rangecard-bar { margin-top: 14px; }
 .rangecard-bar-head { display: flex; justify-content: space-between; font-size: 0.68rem; color: var(--muted); margin-bottom: 4px; }
-/* --alt (quasi blanc) était illisible comme fond de piste sur une carte
-   --panel (blanche) : sans bordure ni contraste, seul le remplissage était
-   visible, flottant sans piste derrière. --accent-soft donne une piste
-   teintée nettement visible, dans la même famille de couleur que le
-   remplissage. */
-.rangecard-bar-track { height: 6px; border-radius: 999px; background: var(--accent-soft); }
+/* Rollback : --accent-soft rendait la piste bien trop massive/imposante sur
+   la carte ("mille fois trop large") ; retour à --alt, et piste amincie
+   (6px→3px) pour un rendu discret, cohérent avec le reste de l'UI. */
+.rangecard-bar-track { height: 3px; border-radius: 999px; background: var(--alt); }
 .rangecard-bar-fill { display: block; height: 100%; border-radius: 999px; background: var(--accent); }
 
 .detail-back {
