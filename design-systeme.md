@@ -58,7 +58,7 @@ toucher aux composants un par un.
 | Module | Accent | Accent doux | Canvas |
 |---|---|---|---|
 | Accueil / Menus (défaut) | `#384CEA` | `#E5E8FC` | `#F3F5FB` |
-| Stocks | `#C2660C` | `#FBE7D2` | `#FBF3E9` |
+| Stocks | `#EA7D12` | `#FBE7D2` | `#FDFAF6` |
 | Finances (à venir) | `#1F8F55` | `#DBF2E4` | `#EEF8F1` |
 
 **Mécanisme** : un attribut `data-module="wall|menus|stocks|finance"` sur le
@@ -87,10 +87,12 @@ Exceptions volontaires, toujours circulaires : l'avatar (convention
 universelle "personne"), la jauge de progression (cercle fonctionnel, pas
 décoratif).
 
-**Ombres : jamais**, sauf pour un élément qui doit vraiment se détacher du
-reste (le tiroir en bottom-sheet sur mobile, la barre de sous-onglets
-flottante en bas) — et toujours très légères, jamais un `shadow-lg` ou
-équivalent.
+**Ombre douce et discrète par défaut** (`--shadow-float`, léger flou et très
+peu opaque) sur toute carte/panel qui flotte sur le canvas — cartes de liste,
+panels, tuiles du hub, carte du tiroir — jamais un `shadow-lg` ou équivalent
+marqué. Revu après un premier essai trop appuyé (ombre visiblement coupée
+sur le bord de la marge du tiroir) : rayon de flou réduit et opacité
+abaissée plutôt qu'une ombre réservée à un seul composant.
 
 **Bordures : quasi absentes.** La séparation entre deux blocs vient d'une
 différence de fond (`--panel` blanc sur `--canvas` teinté, `--alt` à

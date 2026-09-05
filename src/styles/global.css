@@ -24,7 +24,7 @@ h1, h2 { font-weight: 700; letter-spacing: -0.02em; }
 .login-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
 .login-card {
   width: 100%; max-width: 340px;
-  background: var(--panel); border-radius: var(--radius);
+  background: var(--panel); border-radius: var(--radius); box-shadow: var(--shadow-float);
   padding: 32px 28px; display: flex; flex-direction: column; gap: 14px;
 }
 .login-brand { font-size: 1.4rem; font-weight: 700; letter-spacing: -0.02em; color: var(--accent); }
@@ -160,7 +160,7 @@ h1, h2 { font-weight: 700; letter-spacing: -0.02em; }
 
 .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
 .tile {
-  border: none; border-radius: var(--radius);
+  border: none; border-radius: var(--radius); box-shadow: var(--shadow-float);
   background: var(--panel);
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
   color: var(--text); text-align: center; padding: 20px 8px;
@@ -187,7 +187,7 @@ h1, h2 { font-weight: 700; letter-spacing: -0.02em; }
 .section-head-sub { font-size: 0.8rem; color: var(--muted); margin-top: 2px; }
 .section-head-actions { display: flex; gap: 8px; flex-shrink: 0; }
 
-.panel { background: var(--panel); border-radius: var(--radius); margin-bottom: 14px; overflow: hidden; }
+.panel { background: var(--panel); border-radius: var(--radius); box-shadow: var(--shadow-float); margin-bottom: 14px; overflow: hidden; }
 .panel-body { padding: 10px 18px 16px; }
 .panel-head {
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
@@ -251,9 +251,7 @@ h1, h2 { font-weight: 700; letter-spacing: -0.02em; }
    fermer), carte qui pousse le contenu depuis la droite dès le breakpoint
    desktop (pas de scrim — la place existe). Une seule media query pilote les
    deux comportements sur le même élément #drawer ; drawer.js ne fait
-   qu'ajouter/retirer la classe .open, jamais de logique par device. C'est le
-   seul endroit de l'UI qui a le droit à --shadow-float (--radius-lg côté
-   carte), puisqu'il doit se détacher du reste comme un vrai tiroir. */
+   qu'ajouter/retirer la classe .open, jamais de logique par device. */
 #drawer {
   position: fixed; left: 0; right: 0; bottom: 0; top: auto; z-index: 50;
   height: 88vh; max-height: 88vh;
@@ -270,6 +268,7 @@ h1, h2 { font-weight: 700; letter-spacing: -0.02em; }
 .drawer-frame { width: 100%; height: 100%; box-sizing: border-box; }
 .drawer-card {
   width: 100%; height: 100%; background: var(--panel); color: var(--text);
+  box-shadow: var(--shadow-float);
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   display: flex; flex-direction: column;
 }
@@ -288,7 +287,7 @@ h1, h2 { font-weight: 700; letter-spacing: -0.02em; }
   }
   #drawer.open { width: 400px; }
   .drawer-frame { width: 400px; padding: 12px; }
-  .drawer-card { border-radius: var(--radius-lg); box-shadow: var(--shadow-float); }
+  .drawer-card { border-radius: var(--radius-lg); }
   /* Le scrim n'a de sens qu'en bottom-sheet mobile (le desktop pousse le
      contenu, il ne superpose jamais) — masqué même quand JS l'a ouvert. */
   #scrim { display: none !important; }
