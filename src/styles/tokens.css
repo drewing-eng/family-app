@@ -28,7 +28,7 @@
   /* Ombres : jamais par défaut (séparation par la couleur de fond) ; ce jeton
      n'est utilisé que pour un élément qui doit vraiment se détacher du reste
      (tiroir, barre de sous-onglets flottante). */
-  --shadow-float: 0 8px 30px rgba(30, 40, 90, 0.12);
+  --shadow-float: 0 8px 10px rgba(30, 40, 90, 0.05);
 }
 
 /* Couleur par module : redéfinit --accent/--accent-soft/--canvas sur l'élément
