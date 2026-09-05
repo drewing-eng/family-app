@@ -257,6 +257,12 @@ h1, h2 { font-weight: 700; letter-spacing: -0.02em; }
 #drawer {
   position: fixed; left: 0; right: 0; bottom: 0; top: auto; z-index: 50;
   height: 88vh; max-height: 88vh;
+  /* Le fond de #drawer lui-même (visible dans la marge de 12px autour de la
+     carte, en desktop) doit suivre la teinte du module (#app[data-module])
+     comme .main — sans ce fond explicite ici, la marge retombe sur le
+     --canvas de <body>, qui est hors de portée de l'override par module
+     puisque body est un ancêtre de #app, jamais un descendant. */
+  background: var(--canvas);
   transform: translateY(100%);
   transition: transform 0.32s cubic-bezier(0.32, 0.72, 0, 1);
 }
