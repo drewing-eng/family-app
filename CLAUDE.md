@@ -120,11 +120,16 @@ src/main.js                bootstrap : thème par défaut, boot(), service worke
 src/lib/pocketbase.js      client PocketBase (auth, session, thème, rôle/apps)
 src/lib/theme.js           application du data-theme (jamais implicite)
 src/lib/stocks.js          accès données Stocks (catalogue/pieces/rangements/stocks)
+src/lib/users.js           accès données Admin/Mon compte (collection users)
+src/lib/drawer.js          tiroir générique (remplace <dialog>/confirm() natifs)
+src/lib/icons.js           icônes trait SVG (Feather/Lucide)
 src/views/login.js         écran de connexion
 src/views/shell.js         coquille : sidebar/wall, navigation, sous-onglets de module
 src/views/stocks.js        module Stocks : Gestion (Pièce→Rangement) / Catalogue
+src/views/admin.js         module Admin : liste/création/modification/suppression des comptes
+src/views/account.js       Mon compte : nom/email/mot de passe du compte connecté
 src/styles/tokens.css      design tokens (voir "Design system" ci-dessous)
-src/styles/global.css      reset + styles de base + coquille + login + Stocks
+src/styles/global.css      reset + styles de base + coquille + login + Stocks + Admin
 server.js                  serveur Express de prod (sert dist/ + /config.js)
 public/manifest.webmanifest, sw.js, icon.svg   PWA
 Dockerfile                  build multi-stage (vite build → image Express)
@@ -339,9 +344,45 @@ Implémenté au chantier 2 :
   désactivé/supprimé entretemps ; réaffiche alors l'écran de login.
 - `src/views/shell.js` — filtre la nav par `apps_autorisees`, affiche le
   rôle en badge dans le profil (sidebar desktop), gère la déconnexion.
-- Pas encore fait : aucun écran de gestion des comptes (création
-  d'utilisateurs) — reste à faire à l'admin PocketBase directement pour
-  l'instant, une UI dédiée n'est pas dans le périmètre actuel.
+
+**Module Admin** (`src/views/admin.js`, `src/lib/users.js`) — liste,
+création, modification, suppression des comptes. Visible dans la nav pour
+Admin et Membre (Admin en écriture complète, Membre en lecture seule — pas
+de boutons d'action), invisible pour Invité — **gating par rôle, pas par
+`apps_autorisees`** (contrairement à Menus/Stocks), voir `ALL_MODULES` dans
+`shell.js`. Un admin ne peut pas se supprimer lui-même depuis cet écran (le
+bouton "Supprimer" est masqué sur sa propre ligne). Le formulaire ne propose
+que Menus/Stocks comme "applications ouvertes" (Wall est toujours accessible,
+Finances toujours désactivée — inutile de les proposer, voir "Décisions
+verrouillées"). `theme` est posé à `"clair"` à la création pour ne jamais
+laisser un compte sans valeur par défaut (voir modèle de données ci-dessus).
+
+**Mon compte** (`src/views/account.js`) — accessible à tous les rôles en
+cliquant son propre profil (avatar/nom dans la sidebar desktop, avatar dans
+l'en-tête mobile — pas d'entrée dans la nav principale, voir
+`ACCOUNT_MODULE` dans `shell.js`), jamais un module de la liste `ALL_MODULES`.
+Change nom/email (`updateMyInfo`) et mot de passe (`changeMyPassword`, qui
+exige `oldPassword` — PocketBase l'impose pour un changement de mot de passe
+en self-service, contrairement à `updateUser` utilisé par un admin sur un
+autre compte). Après un changement de nom, `shell.js:syncProfileDisplay()`
+rafraîchit l'avatar/le nom affichés sans reconstruire tout le shell.
+
+⚠️ **Règles d'API PocketBase requises sur la collection `users`** (à poser
+par le superadmin, je ne peux pas les créer moi-même) pour que ces deux
+écrans fonctionnent :
+- List/View : `@request.auth.role = "admin" || @request.auth.role = "membre"`
+- Create : `@request.auth.role = "admin"`
+- Update : `@request.auth.role = "admin" || id = @request.auth.id`
+- Delete : `@request.auth.role = "admin"`
+
+Non testé contre `pb.libaxio.com` (comme le reste de l'app cette session,
+voir "Points encore ouverts") — en particulier, le changement d'email en
+self-service passe par une simple mise à jour directe du champ `email`
+(pas de flow de confirmation par lien `requestEmailChange`/
+`confirmEmailChange`, volontairement laissé de côté pour rester simple) ;
+si la collection `users` a l'option "confirmation de changement d'email"
+activée côté PocketBase, ce changement échouera silencieusement ou avec une
+erreur PocketBase explicite — à vérifier en conditions réelles.
 
 Module Stocks (chantier 3) : voir "Modèle de données PocketBase" ci-dessus
 pour le détail des collections et de leurs règles d'API par rôle.
@@ -367,6 +408,11 @@ pour le détail des collections et de leurs règles d'API par rôle.
       revue des sessions (les règles d'API par collection/rôle sont déjà
       posées au fil des chantiers, à auditer plutôt qu'à créer de zéro).
 - [ ] **Chantier 6 — Module Finances** (plus tard, hors périmètre actuel).
+- [x] **Module Admin + Mon compte** (hors plan initial, ajouté à la demande) :
+      gestion des comptes (créer/modifier/supprimer, gating par rôle plutôt
+      que par `apps_autorisees`) et auto-gestion du compte connecté
+      (nom/email/mot de passe) — voir "Rôles & auth (PocketBase)" ci-dessus
+      pour le détail et les règles d'API PocketBase requises.
 
 ## Points encore ouverts
 
@@ -382,6 +428,12 @@ pour le détail des collections et de leurs règles d'API par rôle.
 - **`catalogue.unite` pas encore créé côté PocketBase** — texte libre
   optionnel, voir "Modèle de données PocketBase" ci-dessus ; le code
   l'envoie déjà mais rien n'est persisté tant que le champ n'existe pas.
+- **Règles d'API de la collection `users` pas confirmées côté PocketBase**
+  (List/View/Create/Update/Delete, voir "Rôles & auth" ci-dessus) —
+  nécessaires pour que le module Admin et Mon compte fonctionnent ; à poser
+  par le superadmin, et le flow de changement d'email en self-service
+  (mise à jour directe, pas de confirmation par lien) à vérifier en
+  conditions réelles.
 - URL de production de family-menu, pour l'iframe (chantier 4).
 - Audit complet des règles d'API PocketBase par rôle (chantier 5) — les
   règles de base sont posées collection par collection au fil des

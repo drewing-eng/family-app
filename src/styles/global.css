@@ -35,6 +35,19 @@ h1, h2 { font-weight: 700; letter-spacing: -0.02em; }
   font-size: 0.92rem; color: var(--text); background: var(--alt);
 }
 .field input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* Groupe de cases à cocher (ex. applications ouvertes, module Admin) : même
+   habillage que .field, mais un <fieldset> a un border/padding par défaut à
+   neutraliser explicitement. */
+.checkbox-field { border: none; padding: 0; margin: 0; }
+.checkbox-field legend { font-size: 0.82rem; color: var(--muted); padding: 0; margin-bottom: 5px; }
+.checkbox-row { display: flex; align-items: center; gap: 8px; font-size: 0.88rem; color: var(--text); padding: 4px 0; }
+.checkbox-row input { width: auto; accent-color: var(--accent); }
+
+/* Formulaire "Mon compte" : deux panels indépendants (infos / mot de passe),
+   chacun avec son propre bouton d'enregistrement — pas de zone d'actions
+   partagée comme dans le tiroir. */
+.account-form { display: flex; flex-direction: column; gap: 14px; max-width: 360px; }
 .login-error { font-size: 0.82rem; color: var(--danger); }
 .btn-primary {
   border: none; border-radius: var(--radius-sm); background: var(--accent); color: #fff;
@@ -76,6 +89,14 @@ h1, h2 { font-weight: 700; letter-spacing: -0.02em; }
 
 .side-profile { border-top: 1px solid var(--line); padding: 14px 16px 18px; display: flex; align-items: center; gap: 8px; }
 .avatar { width: 30px; height: 30px; border-radius: 50%; background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 0.74rem; font-weight: 700; flex-shrink: 0; }
+/* Avatar + nom cliquables → "Mon compte" (voir data-nav="compte", shell.js).
+   Réinitialise les styles de bouton pour rester visuellement identique à
+   l'ancien bloc non cliquable ; seul un hover discret signale l'affordance. */
+.side-profile-btn {
+  display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0;
+  border: none; background: none; font-family: inherit; text-align: left; padding: 0;
+}
+.side-profile-btn:hover .n { color: var(--accent); }
 .side-profile .who { flex: 1; min-width: 0; overflow: hidden; }
 .side-profile .who .n { font-size: 0.83rem; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .side-profile .who .r { font-size: 0.66rem; color: var(--muted); }
@@ -87,6 +108,7 @@ h1, h2 { font-weight: 700; letter-spacing: -0.02em; }
   background: var(--panel); border-bottom: 1px solid var(--line);
 }
 .mobile-header h1 { font-size: 1.25rem; letter-spacing: -0.02em; color: var(--accent); flex: 1; }
+.avatar-btn { border: none; cursor: pointer; }
 
 /* Chip carré (icône dans un fond teinté) : bouton de fermeture de module
    ("croix", en haut à droite — jamais à la même position que la flèche de
@@ -238,6 +260,9 @@ h1, h2 { font-weight: 700; letter-spacing: -0.02em; }
    plein + texte blanc, comme la maquette — jamais une teinte --danger, qui
    est réservée aux indicateurs factuels sémantiques (cf. .tension-bar-fill). */
 .badge.accent { background: var(--accent); color: #fff; }
+/* Badge neutre (ex. rôle d'un utilisateur, module Admin) : fond --alt +
+   texte --muted, jamais l'accent — cf. design-systeme.md § Composants. */
+.badge.neutral { background: var(--alt); color: var(--muted); }
 
 /* Ligne du panel "Articles en tension" : nom fixe à gauche, barre de
    progression qui prend l'espace restant, quantité fixe à droite — comme les

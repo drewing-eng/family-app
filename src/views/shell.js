@@ -2,6 +2,8 @@ import { pb, logout, userRole, userApps, updateTheme } from '../lib/pocketbase.j
 import { applyTheme, currentThemeAttr } from '../lib/theme.js';
 import { renderStocksTab } from './stocks.js';
 import { tensionItems } from '../lib/stocks.js';
+import { renderAdminTab } from './admin.js';
+import { renderAccountTab } from './account.js';
 import { icon } from '../lib/icons.js';
 import { initDrawer } from '../lib/drawer.js';
 
@@ -11,7 +13,16 @@ const ALL_MODULES = [
   { id: 'wall', icon: 'home', label: 'Accueil', always: true },
   { id: 'menus', icon: 'calendar', label: 'Menus' },
   { id: 'stocks', icon: 'box', label: 'Stocks' },
+  // Gérée par rôle plutôt que par apps_autorisees (comme Wall/Finances) :
+  // Admin peut tout, Membre voit en lecture seule, Invité n'y a pas accès du
+  // tout — indépendant des applications ouvertes de chacun.
+  { id: 'admin', icon: 'users', label: 'Admin', roles: ['admin', 'membre'] },
 ];
+
+// "Mon compte" n'est pas dans ALL_MODULES : pas de tuile/item de nav dédié,
+// on y accède en cliquant son propre profil (avatar/nom, sidebar ou en-tête
+// mobile) — toujours accessible, quel que soit le rôle.
+const ACCOUNT_MODULE = { id: 'compte', label: 'Mon compte' };
 
 const STOCK_TABS = [
   { id: 'gestion', label: 'Gestion' },
@@ -30,15 +41,16 @@ function initials(user) {
 
 function hashModule() {
   const m = (location.hash || '').replace(/^#\/?/, '');
-  return ['wall', 'menus', 'stocks'].includes(m) ? m : 'wall';
+  return ['wall', 'menus', 'stocks', 'admin', 'compte'].includes(m) ? m : 'wall';
 }
 
 export function renderShell(root) {
   const user = pb.authStore.record;
   const allowed = userApps(user);
-  const modules = ALL_MODULES.filter((m) => m.always || allowed.includes(m.id));
+  const role = userRole(user);
+  const modules = ALL_MODULES.filter((m) => (m.roles ? m.roles.includes(role) : m.always || allowed.includes(m.id)));
   const state = { module: hashModule(), stockTab: 'gestion' };
-  if (!modules.some((m) => m.id === state.module)) state.module = 'wall';
+  if (state.module !== 'compte' && !modules.some((m) => m.id === state.module)) state.module = 'wall';
 
   root.innerHTML = `
     <div class="app-shell">
@@ -49,17 +61,20 @@ export function renderShell(root) {
         </div>
         <nav class="side-nav" id="sideNav"></nav>
         <div class="side-profile">
-          <div class="avatar">${initials(user)}</div>
-          <div class="who">
-            <div class="n">${escapeHtml(user?.name || user?.email || '')}</div>
-            <div class="r">${ROLE_LABEL[userRole(user)] || 'Invité'}</div>
-          </div>
+          <button class="side-profile-btn" data-nav="compte" title="Mon compte">
+            <div class="avatar">${initials(user)}</div>
+            <div class="who">
+              <div class="n">${escapeHtml(user?.name || user?.email || '')}</div>
+              <div class="r">${ROLE_LABEL[userRole(user)] || 'Invité'}</div>
+            </div>
+          </button>
           <button class="icon-btn" id="themeBtnDesktop" title="Changer de thème"></button>
           <button class="icon-btn" id="logoutBtnDesktop" title="Se déconnecter">${icon('logout')}</button>
         </div>
       </aside>
 
       <div class="mobile-header">
+        <button class="avatar avatar-btn" data-nav="compte" title="Mon compte">${initials(user)}</button>
         <h1 id="mobileTitle">GAUTIER Family</h1>
         <button class="icon-btn" id="themeBtnMobile" title="Changer de thème"></button>
         <button class="icon-btn" id="logoutBtnMobile" title="Se déconnecter">${icon('logout')}</button>
@@ -100,6 +115,7 @@ export function renderShell(root) {
   const subtabsMobile = root.querySelector('#subtabsMobile');
 
   function moduleInfo(id) {
+    if (id === 'compte') return ACCOUNT_MODULE;
     return modules.find((m) => m.id === id) || modules[0];
   }
 
@@ -155,9 +171,27 @@ export function renderShell(root) {
       subtabsDesktop.innerHTML = '';
       subtabsMobile.innerHTML = '';
       contentBody.classList.remove('has-subtabs');
-      contentBody.innerHTML = renderContent(state.module, modules);
-      if (state.module === 'wall') fillWallWidgets(contentBody, modules);
+      if (state.module === 'admin') {
+        renderAdminTab(contentBody, user);
+      } else if (state.module === 'compte') {
+        renderAccountTab(contentBody, user, { onUpdated: syncProfileDisplay });
+      } else {
+        contentBody.innerHTML = renderContent(state.module, modules);
+        if (state.module === 'wall') fillWallWidgets(contentBody, modules);
+      }
     }
+  }
+
+  // Après un enregistrement réussi dans "Mon compte" : le profil rendu au
+  // montage du shell (avatar/nom dans la sidebar et l'en-tête mobile) ne se
+  // met pas à jour tout seul — pb.authStore.record est déjà à jour (voir
+  // refreshSession() dans account.js), il ne reste qu'à repeindre ces deux
+  // endroits, sans reconstruire tout le shell.
+  function syncProfileDisplay() {
+    const u = pb.authStore.record;
+    root.querySelectorAll('.avatar').forEach((el) => { el.textContent = initials(u); });
+    const nameEl = root.querySelector('.side-profile .n');
+    if (nameEl) nameEl.textContent = u?.name || u?.email || '';
   }
 
   root.addEventListener('click', (e) => {
@@ -201,7 +235,7 @@ export function renderShell(root) {
 
   window.addEventListener('hashchange', () => {
     const next = hashModule();
-    if (modules.some((m) => m.id === next) && next !== state.module) {
+    if ((next === 'compte' || modules.some((m) => m.id === next)) && next !== state.module) {
       state.module = next;
       state.stockTab = 'gestion';
       render();
