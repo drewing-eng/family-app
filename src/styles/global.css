@@ -271,7 +271,7 @@ h1, h2 { font-weight: 700; letter-spacing: -0.02em; }
 /* Rollback : --accent-soft rendait la piste bien trop massive/imposante sur
    la carte ("mille fois trop large") ; retour à --alt, et piste amincie
    (6px→3px) pour un rendu discret, cohérent avec le reste de l'UI. */
-.rangecard-bar-track { height: 3px; border-radius: 999px; background: var(--alt); }
+.rangecard-bar-track { height: 6px; border-radius: 999px; background: var(--alt); display: inline-block; width: 100%; }
 .rangecard-bar-fill { display: block; height: 100%; border-radius: 999px; background: var(--accent); }
 
 .detail-back {
