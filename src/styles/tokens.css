@@ -45,10 +45,9 @@
    Scopé à html[data-theme="light"] : #app[data-module] seul aurait une
    spécificité (1,1,0) plus forte que :root[data-theme="dark"] (0,2,0) et
    gagnerait donc TOUJOURS, y compris en sombre — où --accent-soft/--canvas
-   clairs (chips/fond crème) jureraient sur un panel sombre. En attendant une
-   vraie déclinaison sombre par module (pas encore validée visuellement, voir
-   bloc sombre ci-dessous), le mode sombre reste volontairement sur un seul
-   accent générique, quel que soit le module. */
+   clairs (chips/fond crème) jureraient sur un panel sombre. La déclinaison
+   sombre de Stocks (validée) est plus bas ; Finances reste sur l'accent
+   générique en sombre tant qu'elle n'a pas eu la même validation. */
 html[data-theme="light"] #app[data-module="stocks"] {
   --accent: #EA7D12;
   --accent-soft: #FBE7D2;
@@ -82,4 +81,18 @@ html[data-theme="light"] #app[data-module="finance"] {
   --accent: #8C9AF5; --accent-soft: #2A2F52;
   --good: #5CBF82; --warn: #E0955A; --danger: #E4807A;
   --shadow-float: 0 0px 30px rgba(0, 0, 0, 0.45);
+}
+
+/* Déclinaison sombre du module Stocks — validée par l'utilisateur (seuls
+   --accent/--accent-soft changent ; les fonds --canvas/--panel/--alt/--line
+   restent les valeurs sombres génériques ci-dessus, pas de bloc dédié). */
+html[data-theme="dark"] #app[data-module="stocks"] {
+  --accent: #F5B38C;
+  --accent-soft: #523D2A;
+}
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]) #app[data-module="stocks"] {
+    --accent: #F5B38C;
+    --accent-soft: #523D2A;
+  }
 }
