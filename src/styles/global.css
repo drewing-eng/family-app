@@ -328,6 +328,16 @@ h1, h2 { font-weight: 700; letter-spacing: -0.02em; }
 .detail-row-bar { flex: 1; height: 6px; border-radius: 999px; background: var(--alt); }
 .detail-row-bar-fill { display: block; height: 100%; border-radius: 999px; background: var(--accent); }
 
+/* Ligne du Catalogue : sur mobile, nom + cible + Modifier + Supprimer sur
+   une seule ligne flex se marchaient dessus ou débordaient (même famille de
+   problème que .detail-row ci-dessus). Passe en grille 1 colonne — nom sur
+   la première ligne, cible+actions (qui peuvent elles-mêmes revenir à la
+   ligne si besoin) sur la seconde. Desktop inchangé (une seule ligne). */
+@media (max-width: 768px) {
+  .catalog-row { display: grid; row-gap: 6px; padding: 12px 0; }
+  .catalog-row .panel-head-actions { flex-wrap: wrap; row-gap: 6px; }
+}
+
 .btn-ghost {
   font-family: inherit; font-size: 0.85rem; font-weight: 600;
   background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius-sm);

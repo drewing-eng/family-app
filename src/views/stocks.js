@@ -415,7 +415,7 @@ function renderCatalogue(container, canWrite, refresh, items) {
     html += '<div class="panel"><div class="panel-body" style="padding-top:8px;">';
     items.forEach((item) => {
       const unite = item.unite ? ` ${escapeHtml(item.unite)}` : '';
-      html += `<div class="row">
+      html += `<div class="row catalog-row">
         <span class="row-text">${escapeHtml(item.nom)}</span>
         <span class="panel-head-actions">
           <span class="row-note">cible : ${item.quantite_cible}${unite}</span>
