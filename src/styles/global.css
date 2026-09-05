@@ -87,9 +87,22 @@ h1, h2 { font-weight: 700; letter-spacing: -0.02em; }
   background: var(--panel); border-bottom: 1px solid var(--line);
 }
 .mobile-header h1 { font-size: 1.25rem; letter-spacing: -0.02em; color: var(--accent); flex: 1; }
-.mobile-header .back { border: none; background: var(--alt); color: var(--text); width: 30px; height: 30px; border-radius: 50%; font-size: 0.85rem; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; }
 
-.main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+/* Chip carré (icône dans un fond teinté) : bouton de fermeture de module
+   ("croix", en haut à droite — jamais à la même position que la flèche de
+   retour d'un sous-écran, ex. .detail-back, qui reste à gauche du contenu). */
+.icon-chip {
+  border: none; background: var(--alt); color: var(--muted);
+  width: 34px; height: 34px; border-radius: var(--radius-xs); flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+/* `display: inline-flex` ci-dessus a la même spécificité que la règle
+   [hidden] du navigateur (display:none) — sans ceci l'attribut hidden serait
+   silencieusement ignoré dès que ce composant est utilisé. */
+.icon-chip[hidden] { display: none; }
+.icon-chip:hover { color: var(--accent); }
+
+.main { flex: 1; display: flex; flex-direction: column; min-width: 0; background: var(--canvas); }
 .pane-title { display: none; padding: 22px 28px 6px; }
 .pane-title h2 { font-size: 1.5rem; }
 .content-body { flex: 1; padding: 14px 16px 40px; }
@@ -145,15 +158,21 @@ h1, h2 { font-weight: 700; letter-spacing: -0.02em; }
 .mobile-modules { display: block; }
 @media (min-width: 769px) { .mobile-modules { display: none; } }
 
-.tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
 .tile {
-  aspect-ratio: 1; border: none; border-radius: var(--radius);
-  background: var(--alt);
+  border: none; border-radius: var(--radius);
+  background: var(--panel);
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
-  color: var(--text); text-align: center; padding: 10px;
+  color: var(--text); text-align: center; padding: 20px 8px;
 }
-.tile .ic { font-size: 1.9rem; display: inline-flex; }
-.tile .lbl { font-size: 0.88rem; font-weight: 700; letter-spacing: -0.01em; }
+.tile.disabled { opacity: 0.4; cursor: default; }
+.tile-ic-chip {
+  width: 40px; height: 40px; border-radius: var(--radius-xs);
+  background: var(--accent-soft); color: var(--accent); font-size: 1.1rem;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.tile.disabled .tile-ic-chip { background: var(--alt); color: var(--muted); }
+.tile .lbl { font-size: 0.8rem; font-weight: 700; letter-spacing: -0.01em; }
 
 .empty-state { text-align: center; padding: 54px 20px; color: var(--muted); }
 .empty-state.small { padding: 20px; }

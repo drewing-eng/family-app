@@ -58,10 +58,10 @@ export function renderShell(root) {
       </aside>
 
       <div class="mobile-header">
-        <button class="back" id="mobileBack" hidden aria-label="Retour à l'accueil">${icon('arrow-left')}</button>
         <h1 id="mobileTitle">GAUTIER Family</h1>
         <button class="icon-btn" id="themeBtnMobile" title="Changer de thème"></button>
         <button class="icon-btn" id="logoutBtnMobile" title="Se déconnecter">${icon('logout')}</button>
+        <button class="icon-chip" id="mobileClose" hidden aria-label="Fermer le module, retour à l'accueil">${icon('x')}</button>
       </div>
 
       <main class="main">
@@ -78,7 +78,7 @@ export function renderShell(root) {
   const contentBody = root.querySelector('#contentBody');
   const paneTitle = root.querySelector('#paneTitle');
   const mobileTitle = root.querySelector('#mobileTitle');
-  const mobileBack = root.querySelector('#mobileBack');
+  const mobileClose = root.querySelector('#mobileClose');
   const subtabsDesktop = root.querySelector('#subtabsDesktop');
   const subtabsMobile = root.querySelector('#subtabsMobile');
 
@@ -88,6 +88,13 @@ export function renderShell(root) {
 
   function render() {
     location.hash = `#/${state.module}`;
+
+    // Couleur par module (voir #app[data-module] dans tokens.css) : bleu par
+    // défaut pour Accueil/Menus, teinte dédiée dès qu'on entre dans un
+    // module qui en a une (Stocks aujourd'hui). `root` est directement
+    // l'élément #app (passé par main.js), donc le sélecteur CSS s'applique
+    // sans wrapper supplémentaire.
+    root.dataset.module = state.module;
 
     sideNav.innerHTML = modules
       .map(
@@ -101,10 +108,10 @@ export function renderShell(root) {
     paneTitle.textContent = info.label;
 
     if (state.module === 'wall') {
-      mobileBack.hidden = true;
+      mobileClose.hidden = true;
       mobileTitle.textContent = 'GAUTIER Family';
     } else {
-      mobileBack.hidden = false;
+      mobileClose.hidden = false;
       mobileTitle.textContent = info.label;
     }
 
@@ -145,7 +152,7 @@ export function renderShell(root) {
       render();
       return;
     }
-    if (e.target.closest('#mobileBack')) {
+    if (e.target.closest('#mobileClose')) {
       state.module = 'wall';
       render();
       return;
@@ -204,8 +211,9 @@ function renderWall(modules) {
   if (tiles.length) {
     html += '<div class="mobile-modules"><div class="section-eyebrow">Modules</div><div class="tiles">';
     tiles.forEach((m) => {
-      html += `<button class="tile" data-goto="${m.id}"><span class="ic">${icon(m.icon)}</span><span class="lbl">${m.label}</span></button>`;
+      html += `<button class="tile" data-goto="${m.id}"><span class="tile-ic-chip">${icon(m.icon)}</span><span class="lbl">${m.label}</span></button>`;
     });
+    html += `<button class="tile disabled" disabled><span class="tile-ic-chip">${icon('coin')}</span><span class="lbl">Finances</span></button>`;
     html += '</div></div>';
   }
   return html;
