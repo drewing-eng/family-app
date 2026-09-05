@@ -233,16 +233,22 @@ Résumé très court :
   (`src/lib/icons.js`, style Feather/Lucide).
 
 **Mode sombre** — dérivation générique posée dans `tokens.css`
-(`:root[data-theme="dark"]`), jamais validée visuellement par l'utilisateur
-(décision explicite : pas de nouvelle palette sans validation, voir
-"Décisions verrouillées"). Un bug de cascade a été corrigé depuis : les
-blocs `#app[data-module="stocks"|"finance"]` avaient une spécificité CSS
-plus forte que `:root[data-theme="dark"]` et gagnaient donc toujours, même
-en sombre, faisant fuiter des fonds crème/pâles dans un module par ailleurs
-sombre. Ils sont maintenant scopés à `html[data-theme="light"]` — en sombre,
-**tous les modules retombent sur un seul accent générique** (lavande),
-volontairement pas encore décliné par module (orange Stocks, vert Finances)
-tant que cette déclinaison n'a pas été proposée puis validée.
+(`:root[data-theme="dark"]`), jamais formellement validée visuellement dans
+son ensemble par l'utilisateur (décision explicite : pas de nouvelle palette
+sans validation, voir "Décisions verrouillées"). Un bug de cascade a été
+corrigé : les blocs `#app[data-module="stocks"|"finance"]` avaient une
+spécificité CSS plus forte que `:root[data-theme="dark"]` et gagnaient donc
+toujours, même en sombre, faisant fuiter des fonds crème/pâles dans un
+module par ailleurs sombre — ils sont maintenant scopés à
+`html[data-theme="light"]`.
+
+Déclinaison sombre par module : **Stocks a sa propre déclinaison validée**
+(`html[data-theme="dark"] #app[data-module="stocks"]` — `--accent: #F5B38C`,
+`--accent-soft: #523D2A`, proposées par l'utilisateur ; les fonds
+`--canvas`/`--panel`/`--alt`/`--line` restent volontairement les valeurs
+sombres génériques, pas de canvas teinté par module en sombre). **Finances
+reste sur l'accent générique** (lavande) en sombre tant que la même
+validation n'a pas eu lieu pour elle.
 
 Ce qui reste vrai quel que soit l'état de la palette : toujours **ouvrir
 l'app en clair par défaut**, jamais suivre `prefers-color-scheme`
