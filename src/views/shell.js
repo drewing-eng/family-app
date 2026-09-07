@@ -1,6 +1,6 @@
 import { pb, logout, userRole, userApps, updateTheme } from '../lib/pocketbase.js';
 import { applyTheme, currentThemeAttr } from '../lib/theme.js';
-import { renderStocksTab } from './stocks.js';
+import { renderStocksTab, openTensionDrawer } from './stocks.js';
 import { tensionItems } from '../lib/stocks.js';
 import { renderAdminTab } from './admin.js';
 import { renderAccountTab } from './account.js';
@@ -54,6 +54,12 @@ export function renderShell(root) {
   const modules = ALL_MODULES.filter((m) => m.always || allowed.includes(m.id));
   const state = { module: hashModule(), stockTab: 'gestion', accountTab: 'compte' };
   if (state.module !== 'compte' && !modules.some((m) => m.id === state.module)) state.module = 'wall';
+
+  // Alimenté par fillWallWidgets() une fois les données du widget "Stocks en
+  // tension" connues — permet au clic sur le widget (#wallTensionWidget,
+  // voir le listener plus bas) d'ouvrir le même tiroir de détail que sur la
+  // page Stocks, sans refaire l'appel PocketBase.
+  let wallTensionItems = [];
 
   root.innerHTML = `
     <div class="app-shell">
@@ -188,7 +194,9 @@ export function renderShell(root) {
       subtabsMobile.innerHTML = '';
       contentBody.classList.remove('has-subtabs');
       contentBody.innerHTML = renderContent(state.module, modules);
-      if (state.module === 'wall') fillWallWidgets(contentBody, modules);
+      if (state.module === 'wall') {
+        fillWallWidgets(contentBody, modules, { onStockItems: (items) => { wallTensionItems = items; } });
+      }
     }
   }
 
@@ -205,6 +213,10 @@ export function renderShell(root) {
   }
 
   root.addEventListener('click', (e) => {
+    if (e.target.closest('#wallTensionWidget')) {
+      openTensionDrawer(wallTensionItems);
+      return;
+    }
     const nav = e.target.closest('[data-nav]');
     if (nav) {
       state.module = nav.getAttribute('data-nav');
@@ -342,7 +354,10 @@ function stockWidgetHtml(items) {
       <div class="wall-widget-bar"><div class="wall-widget-bar-fill" style="width:${pct}%"></div></div>
     </div>`;
   }).join('');
-  return `<button class="wall-widget" data-goto="stocks">
+  // Pas de data-goto ici : le clic ouvre le détail dans le tiroir
+  // (#wallTensionWidget, voir le listener dans renderShell), il ne navigue
+  // plus vers le module Stocks.
+  return `<button class="wall-widget" id="wallTensionWidget">
     <div class="wall-widget-head"><span class="wall-widget-title">Stocks en tension</span><span class="badge accent">${items.length}</span></div>
     <div class="wall-widget-rows">${rows}</div>
   </button>`;
@@ -351,14 +366,16 @@ function stockWidgetHtml(items) {
 // Rempli après coup (comme la jauge desktop de Stocks) : le Wall se peint
 // tout de suite, le widget Stocks apparaît dès que ses données PocketBase
 // arrivent, sans bloquer le reste de l'écran.
-async function fillWallWidgets(container, modules) {
+async function fillWallWidgets(container, modules, opts = {}) {
   const grid = container.querySelector('.wall-widgets');
   if (!grid) return;
   if (modules.some((m) => m.id === 'stocks')) {
     const slot = grid.querySelector('#wallStockWidget');
     if (slot) {
       try {
-        const html = stockWidgetHtml(await tensionItems());
+        const items = await tensionItems();
+        opts.onStockItems?.(items);
+        const html = stockWidgetHtml(items);
         if (html) slot.outerHTML = html;
         else slot.remove();
       } catch {

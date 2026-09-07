@@ -250,7 +250,10 @@ h1, h2 { font-weight: 700; letter-spacing: -0.02em; }
    --alt + bordure, réservé aux panels à sections type détail de rangement),
    il reste sur le même fond blanc que le reste du panel — un seul bloc
    plat, pas de bandeau. */
-.tension-panel-btn { display: block; width: 100%; border: none; text-align: left; padding: 16px 18px; }
+/* color + background explicites : sans ça, Safari iOS retombe sur son bleu
+   système par défaut pour le texte d'un <button> non stylé (déjà rencontré
+   ailleurs dans l'app — tous les autres boutons custom le précisent). */
+.tension-panel-btn { display: block; width: 100%; border: none; background: none; color: var(--text); text-align: left; padding: 16px 18px; }
 .tension-panel-btn:hover .panel-head-title { color: var(--accent); }
 .tension-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 

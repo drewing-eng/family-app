@@ -216,8 +216,10 @@ function renderGestionList(container, canWrite, refresh, { catalogue, totals, pi
         return;
       }
       if (e.target.closest('[data-action="open-tension"]')) {
-        const tenseItems = catalogue.filter((a) => isTension(totals.get(a.id) || 0, a.quantite_cible));
-        openTensionDrawer(tenseItems, totals);
+        const tenseItems = catalogue
+          .filter((a) => isTension(totals.get(a.id) || 0, a.quantite_cible))
+          .map((a) => ({ ...a, total: totals.get(a.id) || 0 }));
+        openTensionDrawer(tenseItems);
         return;
       }
       const openR = e.target.closest('[data-action="open-rangement"]');
@@ -248,13 +250,15 @@ function renderGestionList(container, canWrite, refresh, { catalogue, totals, pi
 // Détail des articles en tension : même présentation que le détail d'un
 // rangement (nom + quantité/cible + barre en dessous), mais en lecture
 // seule et avec un remplissage --warn (indicateur d'alerte, pas --accent).
-function openTensionDrawer(tenseItems, totals) {
-  const rows = tenseItems.map((a) => {
-    const total = totals.get(a.id) || 0;
-    const pct = Math.max(0, Math.min(100, (total / a.quantite_cible) * 100));
+// `items` doit déjà porter un `.total` par article — même forme que
+// lib/stocks.js:tensionItems(), pour être réutilisable telle quelle par le
+// widget du Wall (shell.js) sans dupliquer le calcul.
+export function openTensionDrawer(items) {
+  const rows = items.map((a) => {
+    const pct = Math.max(0, Math.min(100, (a.total / a.quantite_cible) * 100));
     const unite = a.unite ? ` ${escapeHtml(a.unite)}` : '';
     return `<div class="row detail-row">
-      <div class="row-label"><div class="row-text">${escapeHtml(a.nom)}</div><div class="row-note">${total} / ${a.quantite_cible}${unite}</div></div>
+      <div class="row-label"><div class="row-text">${escapeHtml(a.nom)}</div><div class="row-note">${a.total} / ${a.quantite_cible}${unite}</div></div>
       <div class="detail-row-bar"><div class="detail-row-bar-fill warn" style="width:${pct}%"></div></div>
     </div>`;
   }).join('');
