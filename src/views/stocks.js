@@ -8,7 +8,7 @@ import {
 } from '../lib/stocks.js';
 import { pb } from '../lib/pocketbase.js';
 import { icon } from '../lib/icons.js';
-import { openDrawer, confirmDrawer } from '../lib/drawer.js';
+import { openDrawer, confirmDrawer, openInfoDrawer } from '../lib/drawer.js';
 
 // Rangement actuellement ouvert en vue détail (liste → détail, comme
 // Chest_gestion) ; persiste tant qu'on reste sur l'onglet Stocks, réinitialisé
@@ -72,19 +72,9 @@ function renderGestionList(container, canWrite, refresh, { catalogue, totals, pi
     // Tension globale : somme d'un article dans toute la maison vs sa cible catalogue.
     const tenseItems = catalogue.filter((a) => isTension(totals.get(a.id) || 0, a.quantite_cible));
     if (tenseItems.length) {
-      html += `<div class="panel"><div class="panel-body">
-        <div class="tension-panel-head"><span class="panel-head-title">Articles en tension</span><span class="badge accent">${tenseItems.length}</span></div>`;
-      tenseItems.forEach((a) => {
-        const total = totals.get(a.id) || 0;
-        const pct = Math.max(0, Math.min(100, (total / a.quantite_cible) * 100));
-        const unite = a.unite ? ` ${escapeHtml(a.unite)}` : '';
-        html += `<div class="row tension-row">
-          <span class="row-text">${escapeHtml(a.nom)}</span>
-          <div class="tension-bar"><div class="tension-bar-fill" style="width:${pct}%"></div></div>
-          <span class="tension-count">${total} / ${a.quantite_cible}${unite}</span>
-        </div>`;
-      });
-      html += '</div></div>';
+      html += `<button type="button" class="panel tension-panel-btn" data-action="open-tension">
+        <div class="tension-panel-head"><span class="panel-head-title">Articles en tension</span><span class="badge accent">${tenseItems.length}</span></div>
+      </button>`;
     }
 
     html += `<div class="stocks-toolbar">
@@ -225,6 +215,11 @@ function renderGestionList(container, canWrite, refresh, { catalogue, totals, pi
         dialogAddPiece(refresh);
         return;
       }
+      if (e.target.closest('[data-action="open-tension"]')) {
+        const tenseItems = catalogue.filter((a) => isTension(totals.get(a.id) || 0, a.quantite_cible));
+        openTensionDrawer(tenseItems, totals);
+        return;
+      }
       const openR = e.target.closest('[data-action="open-rangement"]');
       if (openR) {
         currentDetailRangement = openR.dataset.id;
@@ -248,6 +243,22 @@ function renderGestionList(container, canWrite, refresh, { catalogue, totals, pi
   }
 
   paint();
+}
+
+// Détail des articles en tension : même présentation que le détail d'un
+// rangement (nom + quantité/cible + barre en dessous), mais en lecture
+// seule et avec un remplissage --warn (indicateur d'alerte, pas --accent).
+function openTensionDrawer(tenseItems, totals) {
+  const rows = tenseItems.map((a) => {
+    const total = totals.get(a.id) || 0;
+    const pct = Math.max(0, Math.min(100, (total / a.quantite_cible) * 100));
+    const unite = a.unite ? ` ${escapeHtml(a.unite)}` : '';
+    return `<div class="row detail-row">
+      <div class="row-label"><div class="row-text">${escapeHtml(a.nom)}</div><div class="row-note">${total} / ${a.quantite_cible}${unite}</div></div>
+      <div class="detail-row-bar"><div class="detail-row-bar-fill warn" style="width:${pct}%"></div></div>
+    </div>`;
+  }).join('');
+  openInfoDrawer('Articles en tension', rows);
 }
 
 function renderGestionDetail(container, canWrite, refresh, { detail, pieces, catalogue, stocks }) {

@@ -244,11 +244,15 @@ h1, h2 { font-weight: 700; letter-spacing: -0.02em; }
 .panel-head-title { font-size: 0.92rem; font-weight: 700; letter-spacing: -0.01em; }
 .panel-head-actions { display: flex; align-items: center; gap: 10px; }
 
-/* En-tête du panel "Articles en tension" : contrairement à .panel-head (bandeau
+/* Panel "Articles en tension" : juste un titre + compteur cliquable (pas de
+   liste inline) — un clic ouvre le détail dans le tiroir, voir
+   openTensionDrawer() dans stocks.js. Contrairement à .panel-head (bandeau
    --alt + bordure, réservé aux panels à sections type détail de rangement),
-   celui-ci reste sur le même fond blanc que le reste du panel — comme la
-   maquette, un seul bloc plat, pas de bandeau. */
-.tension-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+   il reste sur le même fond blanc que le reste du panel — un seul bloc
+   plat, pas de bandeau. */
+.tension-panel-btn { display: block; width: 100%; border: none; text-align: left; padding: 16px 18px; }
+.tension-panel-btn:hover .panel-head-title { color: var(--accent); }
+.tension-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 
 .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0 }
 .row:first-child { border-top: none; }
@@ -258,20 +262,11 @@ h1, h2 { font-weight: 700; letter-spacing: -0.02em; }
 .badge { display: inline-flex; align-items: center; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; padding: 3px 10px; border-radius: var(--radius-xs); }
 /* Compteur mis en avant (ex. nombre d'articles en tension) : fond --accent
    plein + texte blanc, comme la maquette — jamais une teinte --danger, qui
-   est réservée aux indicateurs factuels sémantiques (cf. .tension-bar-fill). */
+   est réservée aux indicateurs factuels sémantiques (cf. .detail-row-bar-fill.warn). */
 .badge.accent { background: var(--accent); color: #fff; }
 /* Badge neutre (ex. rôle d'un utilisateur, module Admin) : fond --alt +
    texte --muted, jamais l'accent — cf. design-systeme.md § Composants. */
 .badge.neutral { background: var(--alt); color: var(--muted); }
-
-/* Ligne du panel "Articles en tension" : nom fixe à gauche, barre de
-   progression qui prend l'espace restant, quantité fixe à droite — comme les
-   lignes de détail d'un rangement, mais avec un remplissage --warn (indicateur
-   factuel sémantique) plutôt que --accent. */
-.tension-row .row-text { flex-shrink: 0; }
-.tension-bar { flex: 1; height: 4px; border-radius: 999px; background: var(--alt); }
-.tension-bar-fill { display: block; height: 100%; border-radius: 999px; background: var(--warn); }
-.tension-count { flex-shrink: 0; font-size: 0.8rem; color: var(--muted); }
 
 .field-hint {
   font-size: 0.76rem; color: var(--muted); font-style: italic; margin: -6px 0 0;
@@ -324,9 +319,24 @@ h1, h2 { font-weight: 700; letter-spacing: -0.02em; }
   .detail-row .row-text, .detail-row .row-note { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 }
 
+/* Le tiroir reste étroit même sur desktop (carte de 400px) : les lignes de
+   détail y restent toujours empilées (nom+actions / barre), jamais la mise
+   en page desktop à colonne fixe de .detail-row ci-dessus — d'où le
+   sélecteur scopé à #drawerBody, plus spécifique que la media query donc
+   qui l'emporte à toute largeur d'écran. Utilisé par openTensionDrawer()
+   (stocks.js) pour le détail "Articles en tension". */
+#drawerBody .detail-row {
+  grid-template-columns: 1fr auto; grid-template-areas: "label actions" "bar bar"; padding: 14px 0;
+}
+#drawerBody .detail-row .row-label { width: auto; }
+#drawerBody .detail-row .row-text, #drawerBody .detail-row .row-note { white-space: normal; overflow: visible; text-overflow: initial; }
+
 .row-label { flex-shrink: 0; }
 .detail-row-bar { flex: 1; height: 6px; border-radius: 999px; background: var(--alt); }
 .detail-row-bar-fill { display: block; height: 100%; border-radius: 999px; background: var(--accent); }
+/* Remplissage --warn (indicateur d'alerte) plutôt que --accent : utilisé
+   pour le détail "Articles en tension" (openTensionDrawer, stocks.js). */
+.detail-row-bar-fill.warn { background: var(--warn); }
 
 /* Ligne du Catalogue : sur mobile, nom + cible + Modifier + Supprimer sur
    une seule ligne flex se marchaient dessus ou débordaient (même famille de

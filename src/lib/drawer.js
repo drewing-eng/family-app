@@ -43,6 +43,13 @@ function openRaw(title, fill) {
   scrim.hidden = false;
 }
 
+// Contenu libre en lecture (ex. détail des articles en tension) : pas de
+// formulaire, pas de zone d'actions ajoutée automatiquement — juste le
+// contenu fourni, comme confirmDrawer mais sans les boutons Annuler/Confirmer.
+export function openInfoDrawer(title, bodyHtml) {
+  openRaw(title, (body) => { body.innerHTML = bodyHtml; });
+}
+
 // Formulaire (ajout/édition) : bodyHtml ne fournit que les champs, le
 // tiroir ajoute lui-même la zone d'erreur et les actions Annuler/Enregistrer.
 export function openDrawer(title, bodyHtml, { onSubmit, submitLabel = 'Enregistrer' } = {}) {
