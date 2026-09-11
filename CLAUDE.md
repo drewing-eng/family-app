@@ -468,7 +468,7 @@ pour le détail des collections et de leurs règles d'API par rôle.
       filtre par pièce + reset des filtres sur Gestion — Liste, jauge
       "% du catalogue hors tension" (desktop), unité par article
       (`catalogue.unite`, texte libre optionnel).
-- [ ] **Chantier 4 — Module Menus** (reconstruction native, remplace le plan
+- [x] **Chantier 4 — Module Menus** (reconstruction native, remplace le plan
       d'intégration iframe abandonné) — sous-chantiers :
   - [x] **Menus-1 — Schéma PocketBase + import/historique** : collections
         `menu_plannings`/`menu_courses_checked` (documentées ci-dessus, à
@@ -483,8 +483,10 @@ pour le détail des collections et de leurs règles d'API par rôle.
         ciblée, pas de repaint complet), "Tout décocher".
   - [x] **Menus-4 — Production** : cartes par jour (`timeLevel`, sections,
         bloc bébé), titres nettoyés des emoji, jours `special` exclus.
-  - [ ] **Menus-5 — Widget Wall** : menu du jour réel sur le Wall (remplace
-        le placeholder "Bientôt disponible").
+  - [x] **Menus-5 — Widget Wall** : menu du jour réel sur le Wall (Midi/Soir
+        + badge glucides, ou le texte du jour `special`), remplace le
+        placeholder "Bientôt disponible" — pas de widget du tout si aucun
+        planning importé ou si la date du jour tombe hors période importée.
 - [ ] **Chantier 5 — Sécurisation** : durcissement de l'admin PocketBase,
       revue des sessions (les règles d'API par collection/rôle sont déjà
       posées au fil des chantiers, à auditer plutôt qu'à créer de zéro).

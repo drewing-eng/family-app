@@ -3,6 +3,7 @@ import { applyTheme, currentThemeAttr } from '../lib/theme.js';
 import { renderStocksTab, openTensionDrawer } from './stocks.js';
 import { tensionItems } from '../lib/stocks.js';
 import { renderMenusTab } from './menus.js';
+import { getCurrentPlanning, stripEmoji } from '../lib/menus.js';
 import { renderAdminTab } from './admin.js';
 import { renderAccountTab } from './account.js';
 import { icon } from '../lib/icons.js';
@@ -342,7 +343,7 @@ function renderWall(modules) {
   // reste un placeholder tant que l'URL de production de family-menu n'est
   // pas fournie (chantier 4) — jamais de contenu inventé à sa place.
   let widgets = '';
-  if (allowedIds.includes('menus')) widgets += menusPlaceholderWidget();
+  if (allowedIds.includes('menus')) widgets += '<div id="wallMenuWidget"></div>';
   if (allowedIds.includes('stocks')) widgets += '<div id="wallStockWidget"></div>';
   if (widgets) html += `<div class="wall-widgets">${widgets}</div>`;
 
@@ -358,13 +359,35 @@ function renderWall(modules) {
   return html;
 }
 
-// Widget "Menu du jour" du Wall : contenu réel branché au chantier Menus-5
-// (une fois les écrans Jours/Courses en place) — voir CLAUDE.md § Roadmap.
-function menusPlaceholderWidget() {
-  return `<div class="wall-widget wall-widget-placeholder">
-    <div class="wall-widget-head"><span class="wall-widget-title">Menu du jour</span></div>
-    <p class="row-note">Bientôt disponible.</p>
-  </div>`;
+const WALL_CARBS_BADGE = { ok: 'good', eleve: 'warn', bloquant: 'danger' };
+
+// Widget "Menu du jour" du Wall : construit à partir du jour du planning
+// courant qui correspond à la date du jour. Pas de contenu par défaut si
+// rien de réel à montrer (aucun planning importé, ou la date du jour
+// tombe hors de la période importée) — même politique que le widget
+// Stocks juste en dessous (jamais de placeholder creux).
+function menuWidgetHtml(day) {
+  if (!day) return '';
+  if (day.special) {
+    return `<button class="wall-widget" data-goto="menus">
+      <div class="wall-widget-head"><span class="wall-widget-title">Menu du jour</span></div>
+      <p class="row-note">${escapeHtml(stripEmoji(day.special))}</p>
+    </button>`;
+  }
+  if (!day.adult) return '';
+  const carbs = day.carbs ? `<span class="badge ${WALL_CARBS_BADGE[day.carbs.level] || 'neutral'}">${day.carbs.percent}% glucides</span>` : '';
+  const rows = [['midi', 'Midi'], ['soir', 'Soir']]
+    .map(([key, label]) => {
+      const meal = day.adult[key];
+      if (!meal) return '';
+      return `<div class="wall-widget-row"><span class="slot">${label}</span><span class="dish">${escapeHtml(stripEmoji(meal.dish))}</span></div>`;
+    })
+    .join('');
+  if (!rows) return '';
+  return `<button class="wall-widget" data-goto="menus">
+    <div class="wall-widget-head"><span class="wall-widget-title">Menu du jour</span>${carbs}</div>
+    <div class="wall-widget-rows">${rows}</div>
+  </button>`;
 }
 
 function stockWidgetHtml(items) {
@@ -392,9 +415,12 @@ function stockWidgetHtml(items) {
 async function fillWallWidgets(container, modules, opts = {}) {
   const grid = container.querySelector('.wall-widgets');
   if (!grid) return;
+
+  const tasks = [];
   if (modules.some((m) => m.id === 'stocks')) {
-    const slot = grid.querySelector('#wallStockWidget');
-    if (slot) {
+    tasks.push((async () => {
+      const slot = grid.querySelector('#wallStockWidget');
+      if (!slot) return;
       try {
         const items = await tensionItems();
         opts.onStockItems?.(items);
@@ -404,8 +430,26 @@ async function fillWallWidgets(container, modules, opts = {}) {
       } catch {
         slot.remove(); // pas de vraie donnée disponible : pas de widget, jamais de contenu inventé
       }
-    }
+    })());
   }
+  if (modules.some((m) => m.id === 'menus')) {
+    tasks.push((async () => {
+      const slot = grid.querySelector('#wallMenuWidget');
+      if (!slot) return;
+      try {
+        const planning = await getCurrentPlanning();
+        const today = new Date().toISOString().slice(0, 10);
+        const day = planning?.data?.days?.find((d) => d.date === today) || null;
+        const html = menuWidgetHtml(day);
+        if (html) slot.outerHTML = html;
+        else slot.remove();
+      } catch {
+        slot.remove();
+      }
+    })());
+  }
+
+  await Promise.all(tasks);
   if (!grid.children.length) grid.remove();
 }
 

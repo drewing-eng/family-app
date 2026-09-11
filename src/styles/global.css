@@ -194,6 +194,12 @@ h1, h2 { font-weight: 700; letter-spacing: -0.02em; }
 .wall-widget-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .wall-widget-title { font-size: 0.92rem; font-weight: 700; letter-spacing: -0.01em; }
 .wall-widget-rows { display: flex; flex-direction: column; gap: 12px; }
+/* Widget "Menu du jour" (Midi/Soir) — différent de .wall-widget-row-head
+   (Stocks, une ligne = nom + jauge en dessous), ici une ligne = étiquette
+   de créneau + plat sur la même ligne. */
+.wall-widget-row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; font-size: 0.84rem; }
+.wall-widget-row .slot { color: var(--muted); font-weight: 600; font-size: 0.72rem; width: 42px; flex-shrink: 0; }
+.wall-widget-row .dish { font-weight: 600; flex: 1; }
 .wall-widget-row-head { display: flex; justify-content: space-between; gap: 10px; font-size: 0.78rem; margin-bottom: 4px; }
 .wall-widget-row-head span:first-child { font-weight: 600; }
 .wall-widget-row-head span:last-child { color: var(--muted); }
