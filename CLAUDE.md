@@ -475,8 +475,8 @@ pour le détail des collections et de leurs règles d'API par rôle.
         créer par le superadmin), `src/lib/menus.js`, écran Historique
         (import JSON + liste des plannings précédents en lecture seule,
         `src/views/menus.js`).
-  - [ ] **Menus-2 — Écran Jours** : carte jour (Adultes/Bébé/glucides),
-        jour `special`.
+  - [x] **Menus-2 — Écran Jours** : sélecteur de jours (`.day-strip`), carte
+        jour (Adultes/Bébé/glucides), jour `special`.
   - [ ] **Menus-3 — Courses + synchronisation temps réel** : liste groupée
         par rayon, cases cochées partagées entre membres via PocketBase
         Realtime.

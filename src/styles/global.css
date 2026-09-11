@@ -270,9 +270,51 @@ h1, h2 { font-weight: 700; letter-spacing: -0.02em; }
 /* Badge neutre (ex. rôle d'un utilisateur, module Admin) : fond --alt +
    texte --muted, jamais l'accent — cf. design-systeme.md § Composants. */
 .badge.neutral { background: var(--alt); color: var(--muted); }
+/* Indicateurs sémantiques (ex. bilan glucides, statut bébé partagé/séparé) —
+   jamais utilisés pour un simple compteur, voir .badge.accent ci-dessus. */
+.badge.good { background: var(--good); color: #fff; }
+.badge.warn { background: var(--warn); color: #fff; }
+.badge.danger { background: var(--danger); color: #fff; }
 
 .field-hint {
   font-size: 0.76rem; color: var(--muted); font-style: italic; margin: -6px 0 0;
+}
+
+/* ══════════════ MENUS : écran Jours ══════════════ */
+.day-strip { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 22px; }
+.day-chip { flex-shrink: 0; width: 56px; height: 64px; border-radius: var(--radius-sm); border: none; background: var(--panel); color: var(--muted); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; cursor: pointer; font-family: inherit; }
+.day-chip .l { font-size: 0.68rem; font-weight: 600; }
+.day-chip .n { font-size: 0.95rem; font-weight: 800; }
+.day-chip.active { background: var(--accent); color: #fff; }
+.day-chip.special:not(.active) { background: var(--alt); }
+
+.day-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+.day-head h3 { font-size: 1.15rem; letter-spacing: -0.01em; }
+.day-head .sub { font-size: 0.8rem; color: var(--muted); }
+
+.meal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 26px; }
+.meal-card { background: var(--panel); box-shadow: var(--shadow-float); border-radius: var(--radius); padding: 18px; }
+.meal-card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.meal-card-head .slot { font-size: 0.72rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.03em; }
+.meal-dish { font-size: 0.94rem; font-weight: 700; }
+.meal-dish a { color: var(--accent); }
+.meal-detail { font-size: 0.78rem; color: var(--muted); margin-top: 4px; }
+
+.baby-panel { background: var(--panel); box-shadow: var(--shadow-float); border-radius: var(--radius); overflow: hidden; margin-bottom: 8px; }
+.baby-row { display: flex; align-items: center; gap: 14px; padding: 14px 20px; border-top: 1px solid var(--line); }
+.baby-row:first-child { border-top: none; }
+.baby-row .slot { font-size: 0.72rem; font-weight: 700; color: var(--muted); text-transform: uppercase; width: 52px; flex-shrink: 0; }
+.baby-row .body { flex: 1; min-width: 0; }
+.baby-row .dish { font-size: 0.88rem; font-weight: 700; }
+.baby-row .lot { font-size: 0.74rem; color: var(--muted); margin-top: 1px; }
+
+.special-card { background: var(--panel); box-shadow: var(--shadow-float); border-radius: var(--radius); padding: 28px; text-align: center; color: var(--muted); font-size: 0.9rem; }
+.special-card strong { color: var(--text); display: block; margin-bottom: 4px; font-size: 0.95rem; }
+
+.disclaimer { font-size: 0.74rem; color: var(--muted); font-style: italic; margin-top: 20px; }
+
+@media (max-width: 768px) {
+  .meal-grid { grid-template-columns: 1fr; }
 }
 
 /* ══════════════ MENUS : import + historique ══════════════ */
