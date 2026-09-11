@@ -2,6 +2,7 @@ import { pb, logout, userRole, userApps, updateTheme } from '../lib/pocketbase.j
 import { applyTheme, currentThemeAttr } from '../lib/theme.js';
 import { renderStocksTab, openTensionDrawer } from './stocks.js';
 import { tensionItems } from '../lib/stocks.js';
+import { renderMenusTab } from './menus.js';
 import { renderAdminTab } from './admin.js';
 import { renderAccountTab } from './account.js';
 import { icon } from '../lib/icons.js';
@@ -33,6 +34,13 @@ const STOCK_TABS = [
   { id: 'catalogue', label: 'Catalogue' },
 ];
 
+const MENU_TABS = [
+  { id: 'jours', label: 'Jours' },
+  { id: 'courses', label: 'Courses' },
+  { id: 'production', label: 'Production' },
+  { id: 'historique', label: 'Historique' },
+];
+
 function initials(user) {
   const name = user?.name || user?.email || '?';
   return name
@@ -52,7 +60,7 @@ export function renderShell(root) {
   const user = pb.authStore.record;
   const allowed = userApps(user);
   const modules = ALL_MODULES.filter((m) => m.always || allowed.includes(m.id));
-  const state = { module: hashModule(), stockTab: 'gestion', accountTab: 'compte' };
+  const state = { module: hashModule(), stockTab: 'gestion', menuTab: 'jours', accountTab: 'compte' };
   if (state.module !== 'compte' && !modules.some((m) => m.id === state.module)) state.module = 'wall';
 
   // Alimenté par fillWallWidgets() une fois les données du widget "Stocks en
@@ -176,6 +184,14 @@ export function renderShell(root) {
           else subtabsDesktop.insertAdjacentHTML('beforeend', gaugeHtml(pct));
         },
       });
+    } else if (state.module === 'menus') {
+      const tabsHtml = MENU_TABS.map(
+        (t) => `<button class="tab-btn${t.id === state.menuTab ? ' active' : ''}" data-menutab="${t.id}">${t.label}</button>`
+      ).join('');
+      subtabsDesktop.innerHTML = tabsHtml;
+      subtabsMobile.innerHTML = tabsHtml;
+      contentBody.classList.add('has-subtabs');
+      renderMenusTab(contentBody, state.menuTab, user);
     } else if (state.module === 'compte') {
       const tabs = accountTabsFor(userRole(user));
       const tabsHtml = tabs
@@ -221,6 +237,7 @@ export function renderShell(root) {
     if (nav) {
       state.module = nav.getAttribute('data-nav');
       state.stockTab = 'gestion';
+      state.menuTab = 'jours';
       state.accountTab = 'compte';
       render();
       return;
@@ -236,6 +253,12 @@ export function renderShell(root) {
     const stocktab = e.target.closest('[data-stocktab]');
     if (stocktab) {
       state.stockTab = stocktab.getAttribute('data-stocktab');
+      render();
+      return;
+    }
+    const menutab = e.target.closest('[data-menutab]');
+    if (menutab) {
+      state.menuTab = menutab.getAttribute('data-menutab');
       render();
       return;
     }
@@ -268,6 +291,7 @@ export function renderShell(root) {
     if ((next === 'compte' || modules.some((m) => m.id === next)) && next !== state.module) {
       state.module = next;
       state.stockTab = 'gestion';
+      state.menuTab = 'jours';
       render();
     }
   });
@@ -302,9 +326,6 @@ function gaugeHtml(pct) {
 
 function renderContent(moduleId, modules) {
   if (moduleId === 'wall') return renderWall(modules);
-  if (moduleId === 'menus') {
-    return emptyState('calendar', 'Connexion à créer', "L'URL de production de family-menu n'a pas encore été renseignée. Une fois fournie, cet espace affichera l'application en iframe.");
-  }
   return '';
 }
 
@@ -337,10 +358,12 @@ function renderWall(modules) {
   return html;
 }
 
+// Widget "Menu du jour" du Wall : contenu réel branché au chantier Menus-5
+// (une fois les écrans Jours/Courses en place) — voir CLAUDE.md § Roadmap.
 function menusPlaceholderWidget() {
   return `<div class="wall-widget wall-widget-placeholder">
     <div class="wall-widget-head"><span class="wall-widget-title">Menu du jour</span></div>
-    <p class="row-note">Connexion à créer — l'URL de production de family-menu n'est pas encore renseignée.</p>
+    <p class="row-note">Bientôt disponible.</p>
   </div>`;
 }
 
@@ -384,10 +407,6 @@ async function fillWallWidgets(container, modules, opts = {}) {
     }
   }
   if (!grid.children.length) grid.remove();
-}
-
-function emptyState(iconName, title, text) {
-  return `<div class="empty-state"><div class="ic">${icon(iconName)}</div><p><strong>${escapeHtml(title)}</strong></p><p class="small">${escapeHtml(text)}</p></div>`;
 }
 
 function escapeHtml(str) {

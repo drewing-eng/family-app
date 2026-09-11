@@ -35,6 +35,10 @@ le Wall (comportement volontaire, voir "Rôles & auth" ci-dessous).
 peux pas les créer moi-même (pas de superadmin). Schéma exact dans "Modèle
 de données PocketBase" ci-dessous.
 
+**Avant de tester le module Menus** : les collections `menu_plannings` et
+`menu_courses_checked` doivent exister dans PocketBase (même contrainte,
+schéma dans "Modèle de données PocketBase — module Menus" ci-dessous).
+
 ## Vision
 
 Un seul foyer numérique : un mur familial (Family Wall) comme accueil mobile,
@@ -120,12 +124,14 @@ src/main.js                bootstrap : thème par défaut, boot(), service worke
 src/lib/pocketbase.js      client PocketBase (auth, session, thème, rôle/apps)
 src/lib/theme.js           application du data-theme (jamais implicite)
 src/lib/stocks.js          accès données Stocks (catalogue/pieces/rangements/stocks)
+src/lib/menus.js           accès données Menus (import/historique, courses cochées, sync temps réel)
 src/lib/users.js           accès données Admin/Mon compte (collection users)
 src/lib/drawer.js          tiroir générique (remplace <dialog>/confirm() natifs)
 src/lib/icons.js           icônes trait SVG (Feather/Lucide)
 src/views/login.js         écran de connexion
 src/views/shell.js         coquille : sidebar/wall, navigation, sous-onglets de module
 src/views/stocks.js        module Stocks : Gestion (Pièce→Rangement) / Catalogue
+src/views/menus.js         module Menus : Jours / Courses / Production / Historique
 src/views/admin.js         module Admin : liste/création/modification/suppression des comptes
 src/views/account.js       Mon compte : nom/email/mot de passe du compte connecté
 src/styles/tokens.css      design tokens (voir "Design system" ci-dessous)
@@ -198,6 +204,40 @@ créer manuellement.
 les 4 collections :
 - List/View : `@request.auth.id != ""`
 - Create/Update/Delete : `@request.auth.role = "admin" || @request.auth.role = "membre"`
+
+## Modèle de données PocketBase — module Menus (à créer par le superadmin)
+
+Un JSON importé (format Menus v2 — voir schéma complet fourni par
+l'utilisateur, une carte par jour fusionnant `adult`/`baby`/`production`,
+plus `courses[]` groupée par rayon) est stocké tel quel, sans le
+redécomposer en tables. Pas de champ "planning courant" en base : c'est
+simplement le plus récent par `created` (mécanisme équivalent à
+l'archivage par horodatage de family-menu).
+
+**Collection `menu_plannings`**
+| Champ | Type | Options |
+|---|---|---|
+| `data` | JSON | requis — le document importé tel quel (`meta`, `days`, `courses`) |
+| `label` | Text | optionnel — libellé affiché dans l'historique, dérivé de `meta.title`/`meta.period` à l'import |
+
+**Collection `menu_courses_checked`** — état des cases cochées de la liste
+de courses, partagé entre tous les membres (remplace le `localStorage`
+par-appareil de family-menu).
+| Champ | Type | Options |
+|---|---|---|
+| `planning` | Relation → `menu_plannings` | requis, une seule sélection, cascade delete activé |
+| `item_key` | Text | requis — l'`id` déjà unique fourni par `courses[].items[].id` dans le JSON, pas de dérivation |
+| `checked` | Bool | défaut false |
+
+**Règles d'API**, identiques sur les deux collections :
+- List/View : `@request.auth.id != ""`
+- Create/Update/Delete : `@request.auth.role = "admin" || @request.auth.role = "membre"`
+
+⚠️ Le JSON importé contient des emoji (`courses[].icon`, préfixes dans les
+titres de `production.sections[].title`/`production.baby.title`) — l'app
+ne les affiche jamais tels quels (règle "aucun emoji dans l'interface",
+voir "Design system" ci-dessous) : `lib/menus.js:stripEmoji()` les retire à
+l'affichage uniquement, le JSON stocké en base reste fidèle à la source.
 
 ## Design system
 
@@ -324,9 +364,17 @@ choix est persisté via `updateTheme()` (`pocketbase.js`) sur le champ
   - Pas de suivi de qui a fait quelle action (pas un besoin exprimé).
   - Pas d'unité structurée par article (juste une mention dans l'UI — voir
     "Modèle de données" ci-dessus) ; évolution possible plus tard si besoin.
-- **Menus** : intégré en iframe (pas un lien externe simple). Tant que l'URL
-  de production de family-menu n'est pas fournie, afficher un état "Connexion
-  à créer".
+- **Menus — module natif, pas d'iframe** (décision révisée : la version
+  précédente de ce fichier documentait une intégration en iframe de
+  family-menu, jamais lancée — abandonnée au profit d'une reconstruction
+  complète dans ce dépôt, voir "Modèle de données PocketBase — module
+  Menus" ci-dessous). Repas en texte libre (pas de catalogue
+  recettes/ingrédients), glucides et lots bébé fournis tels quels dans le
+  JSON importé (pas de calcul ni de structuration côté app). Le seul
+  changement fonctionnel réel par rapport à family-menu : les cases cochées
+  de la liste de courses sont synchronisées en temps réel entre tous les
+  membres (PocketBase Realtime), alors que family-menu les stockait en
+  `localStorage` (par appareil, jamais partagé).
 - **Finances** : entrée de navigation visible mais désactivée/"à venir" —
   aucun développement avant que ce chantier soit explicitement lancé.
 - **Chest_gestion** : continue de tourner en prod (Cloudflare) en parallèle,
@@ -420,11 +468,22 @@ pour le détail des collections et de leurs règles d'API par rôle.
       filtre par pièce + reset des filtres sur Gestion — Liste, jauge
       "% du catalogue hors tension" (desktop), unité par article
       (`catalogue.unite`, texte libre optionnel).
-- [ ] **Chantier 4 — Module Menus & Family Wall** : iframe family-menu,
-      widget menu du jour sur le Wall (bloqué sur l'URL de prod de
-      family-menu — le Wall affiche un placeholder "Connexion à créer" en
-      attendant). Widget "Stocks en tension" du Wall déjà fait (branché sur
-      `lib/stocks.js:tensionItems()`, cliquable vers le module Stocks).
+- [ ] **Chantier 4 — Module Menus** (reconstruction native, remplace le plan
+      d'intégration iframe abandonné) — sous-chantiers :
+  - [x] **Menus-1 — Schéma PocketBase + import/historique** : collections
+        `menu_plannings`/`menu_courses_checked` (documentées ci-dessus, à
+        créer par le superadmin), `src/lib/menus.js`, écran Historique
+        (import JSON + liste des plannings précédents en lecture seule,
+        `src/views/menus.js`).
+  - [ ] **Menus-2 — Écran Jours** : carte jour (Adultes/Bébé/glucides),
+        jour `special`.
+  - [ ] **Menus-3 — Courses + synchronisation temps réel** : liste groupée
+        par rayon, cases cochées partagées entre membres via PocketBase
+        Realtime.
+  - [ ] **Menus-4 — Production** : cartes par jour (`timeLevel`, sections,
+        bloc bébé).
+  - [ ] **Menus-5 — Widget Wall** : menu du jour réel sur le Wall (remplace
+        le placeholder "Bientôt disponible").
 - [ ] **Chantier 5 — Sécurisation** : durcissement de l'admin PocketBase,
       revue des sessions (les règles d'API par collection/rôle sont déjà
       posées au fil des chantiers, à auditer plutôt qu'à créer de zéro).
@@ -458,7 +517,9 @@ pour le détail des collections et de leurs règles d'API par rôle.
   précis). Le flow de changement d'email en self-service (mise à jour
   directe, pas de confirmation par lien) reste, lui, à vérifier en
   conditions réelles.
-- URL de production de family-menu, pour l'iframe (chantier 4).
+- **Collections Menus pas encore créées côté PocketBase** — schéma exact
+  dans "Modèle de données PocketBase — module Menus" ci-dessus, à faire par
+  le superadmin avant de pouvoir tester l'import en conditions réelles.
 - Audit complet des règles d'API PocketBase par rôle (chantier 5) — les
   règles de base sont posées collection par collection au fil des
   chantiers, mais pas encore revues dans leur ensemble.
