@@ -85,6 +85,13 @@ function renderJours(container, planning) {
     container.querySelectorAll('.day-chip').forEach((chip) => {
       chip.addEventListener('click', () => { selectedDate = chip.dataset.date; paint(); });
     });
+
+    // Le bandeau de jours défile horizontalement (potentiellement plus de
+    // jours que de place visible) — la puce du jour sélectionné doit
+    // toujours être visible sans scroll manuel, à l'ouverture comme après
+    // un clic. `block: 'nearest'` pour ne jamais faire sauter la page.
+    const activeChip = container.querySelector('.day-chip.active');
+    if (activeChip) activeChip.scrollIntoView({ block: 'nearest', inline: 'center' });
   }
 
   paint();
