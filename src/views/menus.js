@@ -244,12 +244,18 @@ function renderProduction(container, planning) {
     return;
   }
 
+  const today = new Date().toISOString().slice(0, 10);
+
   const html = days.map((day) => {
     const prod = day.production;
     const level = TIME_LEVEL[prod.timeLevel] || { label: prod.timeLevel, badge: 'neutral' };
+    const isToday = day.date === today;
 
-    let card = `<div class="prod-day">
-      <div class="prod-day-head"><h4>${escapeHtml(day.label)} ${escapeHtml(day.displayDate)}</h4><span class="badge ${level.badge}">${escapeHtml(level.label)}</span></div>
+    let card = `<div class="prod-day${isToday ? ' today' : ''}"${isToday ? ' data-today' : ''}>
+      <div class="prod-day-head">
+        <h4>${escapeHtml(day.label)} ${escapeHtml(day.displayDate)}</h4>
+        <span class="prod-day-badges">${isToday ? '<span class="badge accent">Aujourd\'hui</span>' : ''}<span class="badge ${level.badge}">${escapeHtml(level.label)}</span></span>
+      </div>
       ${prod.sublabel ? `<div class="prod-sub">${escapeHtml(stripEmoji(prod.sublabel))}</div>` : ''}`;
 
     (prod.sections || []).forEach((section) => {
@@ -271,6 +277,12 @@ function renderProduction(container, planning) {
   }).join('');
 
   container.innerHTML = html;
+
+  // Même réflexe que le bandeau de jours de l'écran Jours (voir renderJours) :
+  // amener la carte du jour courant en vue sans scroll manuel, plutôt que de
+  // la laisser potentiellement hors écran au milieu d'un planning de
+  // plusieurs semaines.
+  container.querySelector('.prod-day.today')?.scrollIntoView({ block: 'start' });
 }
 
 async function renderHistorique(container, canWrite, opts) {

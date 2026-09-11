@@ -333,14 +333,22 @@ h1, h2 { font-weight: 700; letter-spacing: -0.02em; }
 
 /* ══════════════ MENUS : écran Production ══════════════ */
 .prod-day { background: var(--panel); box-shadow: var(--shadow-float); border-radius: var(--radius); padding: 20px 22px; margin-bottom: 14px; }
+/* Jour courant : fond teinté --accent-soft plutôt qu'un contour — cohérent
+   avec "bordures quasi absentes, séparation par le fond" (design-systeme.md),
+   plus le badge "Aujourd'hui" dans l'en-tête (voir menus.js). */
+.prod-day.today { background: var(--accent-soft); }
 .prod-day-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 4px; }
 .prod-day-head h4 { font-size: 0.95rem; font-weight: 700; }
+.prod-day-badges { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 .prod-sub { font-size: 0.78rem; color: var(--muted); margin-bottom: 14px; }
 .prod-section { margin-top: 14px; }
 .prod-section-title { font-size: 0.8rem; font-weight: 700; margin-bottom: 6px; }
 .prod-section ul { margin: 0; padding-left: 18px; }
 .prod-section li { font-size: 0.84rem; margin-bottom: 4px; }
-.prod-baby { background: var(--alt); border-radius: var(--radius-sm); padding: 12px 16px; margin-top: 14px; }
+.prod-baby { background: var(--alt); border-radius: var(--radius-sm); padding: 16px 20px; margin-top: 16px; }
+.prod-baby .prod-section-title { margin-bottom: 8px; }
+.prod-baby li { margin-bottom: 6px; }
+.prod-baby li:last-child { margin-bottom: 0; }
 
 /* ══════════════ MENUS : import + historique ══════════════ */
 .import-zone { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 18px; flex-wrap: wrap; }
