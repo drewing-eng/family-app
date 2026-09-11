@@ -51,6 +51,26 @@ export async function uncheckAllForPlanning(planningId) {
   await Promise.all(rows.filter((r) => r.checked).map((r) => pb.collection('menu_courses_checked').delete(r.id)));
 }
 
+// Article ajouté par un membre (absent du JSON importé) : même collection
+// que les cases cochées plutôt qu'une collection dédiée — une ligne
+// "article ajouté" est juste une ligne normale qui porte en plus
+// `category`/`text`/`note`, et profite donc gratuitement de la même
+// synchronisation temps réel (voir subscribeChecked ci-dessous) sans rien
+// construire en plus pour ça. `item_key` est généré ici (pas de source
+// JSON à réutiliser) — voir CLAUDE.md § Modèle de données PocketBase —
+// module Menus.
+export function addCourseItem(planningId, { category, text, note }) {
+  const itemKey = `extra-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  return pb.collection('menu_courses_checked').create({
+    planning: planningId, item_key: itemKey, checked: false,
+    category, text, note: note || null,
+  });
+}
+
+export function deleteCourseItem(id) {
+  return pb.collection('menu_courses_checked').delete(id);
+}
+
 // Souscription temps réel (PocketBase Realtime) pour la synchronisation
 // entre membres de la famille — callback(record, action) appelé à chaque
 // création/mise à jour touchant ce planning. Le filtrage par planning se

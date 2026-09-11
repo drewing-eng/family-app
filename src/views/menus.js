@@ -2,8 +2,10 @@ import { userRole } from '../lib/pocketbase.js';
 import {
   listPlannings, getCurrentPlanning, importPlanning, stripEmoji,
   listCheckedForPlanning, setChecked, uncheckAllForPlanning, subscribeChecked, unsubscribeChecked,
+  addCourseItem, deleteCourseItem,
 } from '../lib/menus.js';
 import { icon } from '../lib/icons.js';
+import { openDrawer, confirmDrawer } from '../lib/drawer.js';
 
 const ADULT_STATUS_LABEL = { deux: 'À deux', solo: 'Solo', absent: 'Absent', invites: 'Invités' };
 const BABY_STATUS = { partage: { label: 'Partagé', badge: 'good' }, separe: { label: 'Séparé', badge: 'warn' } };
@@ -42,7 +44,7 @@ export async function renderMenusTab(container, tab, user, opts = {}) {
     if (tab === 'jours') {
       renderJours(container, current);
     } else if (tab === 'courses') {
-      await renderCourses(container, current);
+      await renderCourses(container, current, canWrite);
     } else if (tab === 'production') {
       renderProduction(container, current);
     }
@@ -52,35 +54,56 @@ export async function renderMenusTab(container, tab, user, opts = {}) {
 }
 
 /* ── Courses ── */
-async function renderCourses(container, planning) {
-  const categories = planning.data?.courses || [];
-  if (!categories.length) {
-    container.innerHTML = emptyState('box', 'Aucune liste de courses', 'Ce planning ne contient pas de liste de courses.');
-    return;
-  }
 
-  // item_key -> booléen coché, partagé entre tous les membres (voir
-  // CLAUDE.md § Modèle de données PocketBase — module Menus).
-  const checkedMap = new Map((await listCheckedForPlanning(planning.id)).map((r) => [r.item_key, r.checked]));
+// Fusionne les rayons du JSON importé avec les articles ajoutés par les
+// membres (lignes de menu_courses_checked qui portent un `text` — voir
+// lib/menus.js:addCourseItem). Un article ajouté rejoint le rayon existant
+// du même nom (comparaison insensible à la casse) ou en crée un nouveau.
+function buildCategories(planning, rows) {
+  const categories = (planning.data?.courses || []).map((c) => ({ icon: c.icon, category: c.category, items: [...(c.items || [])] }));
+  rows.filter((r) => r.text).forEach((r) => {
+    const name = r.category?.trim() || 'Autres';
+    let cat = categories.find((c) => c.category.trim().toLowerCase() === name.toLowerCase());
+    if (!cat) { cat = { icon: null, category: name, items: [] }; categories.push(cat); }
+    cat.items.push({ id: r.item_key, text: r.text, note: r.note, extra: true, recordId: r.id });
+  });
+  return categories;
+}
+
+async function renderCourses(container, planning, canWrite) {
+  unsubscribeChecked(); // au cas où renderCourses se ré-invoque elle-même (refresh), voir plus bas
+  const refresh = () => renderCourses(container, planning, canWrite);
+
+  const rows = await listCheckedForPlanning(planning.id);
+  const checkedMap = new Map(rows.map((r) => [r.item_key, r.checked]));
+  const categories = buildCategories(planning, rows);
 
   function paint() {
     const anyChecked = [...checkedMap.values()].some(Boolean);
+    const actions = [];
+    if (canWrite) actions.push(`<button type="button" class="btn-primary small" data-action="add-item">+ Ajouter un article</button>`);
+    if (anyChecked) actions.push(`<button type="button" class="btn-ghost small" data-action="uncheck-all">Tout décocher</button>`);
+
     let html = `<div class="section-head">
       <div>
         <div class="section-head-title">Courses</div>
         <div class="section-head-sub">Coché par n'importe quel membre, visible par tous en direct</div>
       </div>
-      ${anyChecked ? `<div class="section-head-actions"><button type="button" class="btn-ghost small" data-action="uncheck-all">Tout décocher</button></div>` : ''}
+      ${actions.length ? `<div class="section-head-actions">${actions.join('')}</div>` : ''}
     </div>`;
 
-    categories.forEach((cat) => {
-      html += `<div class="course-cat">
-        <div class="course-cat-head"><span class="course-cat-ic">${escapeHtml(catInitials(cat.category))}</span><span class="course-cat-name">${escapeHtml(cat.category)}</span></div>
-        <div class="course-panel">
-          ${(cat.items || []).map((item) => courseItemHtml(item, checkedMap.get(item.id) || false)).join('')}
-        </div>
-      </div>`;
-    });
+    if (!categories.length) {
+      html += emptyState('box', 'Aucune liste de courses', canWrite ? 'Ajoute le premier article ci-dessus.' : 'Ce planning ne contient pas de liste de courses.');
+    } else {
+      categories.forEach((cat) => {
+        html += `<div class="course-cat">
+          <div class="course-cat-head"><span class="course-cat-ic">${escapeHtml(catInitials(cat.category))}</span><span class="course-cat-name">${escapeHtml(cat.category)}</span></div>
+          <div class="course-panel">
+            ${(cat.items || []).map((item) => courseItemRowHtml(item, checkedMap.get(item.id) || false, canWrite)).join('')}
+          </div>
+        </div>`;
+      });
+    }
 
     container.innerHTML = html;
     wireEvents();
@@ -94,6 +117,10 @@ async function renderCourses(container, planning) {
 
   function wireEvents() {
     container.onclick = async (e) => {
+      if (e.target.closest('[data-action="add-item"]')) {
+        dialogAddCourseItem(planning, categories, refresh);
+        return;
+      }
       if (e.target.closest('[data-action="uncheck-all"]')) {
         checkedMap.forEach((v, k) => checkedMap.set(k, false));
         paint();
@@ -101,6 +128,19 @@ async function renderCourses(container, planning) {
           await uncheckAllForPlanning(planning.id);
         } catch (err) {
           alert(err.message || "Impossible de tout décocher.");
+        }
+        return;
+      }
+      const del = e.target.closest('[data-action="delete-item"]');
+      if (del) {
+        const ok = await confirmDrawer('Supprimer cet article ?', 'Il sera retiré de la liste de courses pour tout le monde.');
+        if (ok) {
+          try {
+            await deleteCourseItem(del.dataset.record);
+            refresh();
+          } catch (err) {
+            alert(err.message || 'Impossible de supprimer cet article.');
+          }
         }
         return;
       }
@@ -127,11 +167,48 @@ async function renderCourses(container, planning) {
   // Synchronisation temps réel : un autre membre coche/décoche depuis son
   // propre appareil → mise à jour ciblée du DOM, sans repeindre tout
   // l'écran (évite de perdre le scroll pendant qu'on fait ses courses).
+  // Un article ajouté/supprimé change la liste des lignes elles-mêmes (pas
+  // juste une case) : dans ce cas seulement, on repeint tout via refresh().
   subscribeChecked(planning.id, (record, action) => {
+    if (record.text && (action === 'create' || action === 'delete')) {
+      refresh();
+      return;
+    }
     const checked = action === 'delete' ? false : record.checked;
     checkedMap.set(record.item_key, checked);
     setItemChecked(record.item_key, checked);
   });
+}
+
+function dialogAddCourseItem(planning, categories, onDone) {
+  const categoryNames = [...new Set(categories.map((c) => c.category))];
+  openDrawer('Ajouter un article', `
+    <label class="field"><span>Rayon</span><input type="text" name="category" list="courseCatList" required autofocus placeholder="Fruits & Légumes, Épicerie…" /></label>
+    <datalist id="courseCatList">${categoryNames.map((c) => `<option value="${escapeHtml(c)}"></option>`).join('')}</datalist>
+    <label class="field"><span>Article</span><input type="text" name="text" required placeholder="Ex. Papier essuie-tout" /></label>
+    <label class="field"><span>Note (optionnel)</span><input type="text" name="note" placeholder="Repère, quantité…" /></label>
+  `, {
+    onSubmit: async (fd) => {
+      const category = fd.get('category').trim();
+      const text = fd.get('text').trim();
+      const note = fd.get('note').trim();
+      if (!category || !text) throw new Error('Le rayon et l’article sont requis.');
+      await addCourseItem(planning.id, { category, text, note });
+      onDone();
+    },
+  });
+}
+
+// Ligne de course : le bouton .course-item gère le coché/décoché (comme
+// avant) ; le bouton de suppression (articles ajoutés seulement, jamais
+// sur un article du JSON importé) est un frère à côté, pas un enfant — deux
+// <button> imbriqués seraient invalides en HTML et le navigateur casserait
+// la structure.
+function courseItemRowHtml(item, checked, canWrite) {
+  const del = item.extra && canWrite
+    ? `<button type="button" class="icon-btn course-item-del" data-action="delete-item" data-record="${escapeHtml(item.recordId)}" title="Supprimer">${icon('trash')}</button>`
+    : '';
+  return `<div class="course-item-row">${courseItemHtml(item, checked)}${del}</div>`;
 }
 
 function courseItemHtml(item, checked) {

@@ -222,12 +222,22 @@ l'archivage par horodatage de family-menu).
 
 **Collection `menu_courses_checked`** — état des cases cochées de la liste
 de courses, partagé entre tous les membres (remplace le `localStorage`
-par-appareil de family-menu).
+par-appareil de family-menu), **et** les articles ajoutés manuellement par
+un membre (absents du JSON importé) — une seule collection pour les deux
+usages plutôt qu'une collection dédiée aux ajouts : un article ajouté est
+juste une ligne qui porte en plus `category`/`text`/`note`, et profite donc
+gratuitement de la synchronisation temps réel déjà en place (voir
+`subscribeChecked` dans `lib/menus.js`) sans rien construire en plus pour
+ça. Sur une ligne "case cochée" classique (article du JSON), ces 3 champs
+restent vides.
 | Champ | Type | Options |
 |---|---|---|
 | `planning` | Relation → `menu_plannings` | requis, une seule sélection, cascade delete activé |
-| `item_key` | Text | requis — l'`id` déjà unique fourni par `courses[].items[].id` dans le JSON, pas de dérivation |
+| `item_key` | Text | requis — l'`id` déjà unique fourni par `courses[].items[].id` dans le JSON pour une ligne "case cochée" ; généré côté client (`extra-<timestamp>-<random>`) pour un article ajouté |
 | `checked` | Bool | défaut false |
+| `category` | Text | optionnel — rayon de l'article ajouté (rejoint un rayon existant du JSON si le nom correspond, sinon en crée un nouveau) ; vide sur une ligne "case cochée" classique |
+| `text` | Text | optionnel — libellé de l'article ajouté ; vide sur une ligne "case cochée" classique. **C'est ce champ qui distingue les deux usages** (`buildCategories()` dans `views/menus.js` ne traite comme "article ajouté" que les lignes où il est renseigné) |
+| `note` | Text | optionnel — note de l'article ajouté |
 
 **Règles d'API**, identiques sur les deux collections :
 - List/View : `@request.auth.id != ""`
@@ -523,6 +533,11 @@ pour le détail des collections et de leurs règles d'API par rôle.
 - **Collections Menus pas encore créées côté PocketBase** — schéma exact
   dans "Modèle de données PocketBase — module Menus" ci-dessus, à faire par
   le superadmin avant de pouvoir tester l'import en conditions réelles.
+- **`menu_courses_checked.category`/`text`/`note` pas encore créés côté
+  PocketBase** (ajout d'article à la liste de courses) — le code les
+  envoie déjà à la création (`addCourseItem()`), rien ne casse en
+  attendant (PocketBase ignore un champ inconnu à la création), mais rien
+  n'est persisté tant qu'ils n'existent pas.
 - Audit complet des règles d'API PocketBase par rôle (chantier 5) — les
   règles de base sont posées collection par collection au fil des
   chantiers, mais pas encore revues dans leur ensemble.
