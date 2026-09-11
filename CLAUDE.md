@@ -477,9 +477,10 @@ pour le détail des collections et de leurs règles d'API par rôle.
         `src/views/menus.js`).
   - [x] **Menus-2 — Écran Jours** : sélecteur de jours (`.day-strip`), carte
         jour (Adultes/Bébé/glucides), jour `special`.
-  - [ ] **Menus-3 — Courses + synchronisation temps réel** : liste groupée
-        par rayon, cases cochées partagées entre membres via PocketBase
-        Realtime.
+  - [x] **Menus-3 — Courses + synchronisation temps réel** : liste groupée
+        par rayon (icône = initiales, pas l'emoji du JSON), cases cochées
+        partagées entre membres via PocketBase Realtime (mise à jour DOM
+        ciblée, pas de repaint complet), "Tout décocher".
   - [ ] **Menus-4 — Production** : cartes par jour (`timeLevel`, sections,
         bloc bébé).
   - [ ] **Menus-5 — Widget Wall** : menu du jour réel sur le Wall (remplace

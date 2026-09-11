@@ -1,5 +1,8 @@
 import { userRole } from '../lib/pocketbase.js';
-import { listPlannings, getCurrentPlanning, importPlanning, stripEmoji } from '../lib/menus.js';
+import {
+  listPlannings, getCurrentPlanning, importPlanning, stripEmoji,
+  listCheckedForPlanning, setChecked, uncheckAllForPlanning, subscribeChecked, unsubscribeChecked,
+} from '../lib/menus.js';
 import { icon } from '../lib/icons.js';
 
 const ADULT_STATUS_LABEL = { deux: 'À deux', solo: 'Solo', absent: 'Absent', invites: 'Invités' };
@@ -12,6 +15,11 @@ let selectedDate = null;
 
 export async function renderMenusTab(container, tab, user, opts = {}) {
   const canWrite = ['admin', 'membre'].includes(userRole(user));
+
+  // Une seule souscription temps réel possible à la fois (voir
+  // lib/menus.js:unsubscribeChecked, topic global à la collection) : on la
+  // referme à chaque rendu, elle ne sera rouverte que si tab === 'courses'.
+  unsubscribeChecked();
 
   if (tab === 'historique') {
     renderHistorique(container, canWrite, opts);
@@ -27,14 +35,115 @@ export async function renderMenusTab(container, tab, user, opts = {}) {
     }
     if (tab === 'jours') {
       renderJours(container, current);
+    } else if (tab === 'courses') {
+      await renderCourses(container, current);
     } else {
-      // Courses/Production : construits aux chantiers suivants (voir
-      // CLAUDE.md § Roadmap) — le planning existe déjà, seul l'écran manque.
+      // Production : construite au chantier suivant (voir CLAUDE.md §
+      // Roadmap) — le planning existe déjà, seul l'écran manque.
       container.innerHTML = emptyState('calendar', 'Écran en construction', 'Cet onglet sera développé au prochain chantier.');
     }
   } catch (err) {
     container.innerHTML = errorState(err);
   }
+}
+
+/* ── Courses ── */
+async function renderCourses(container, planning) {
+  const categories = planning.data?.courses || [];
+  if (!categories.length) {
+    container.innerHTML = emptyState('box', 'Aucune liste de courses', 'Ce planning ne contient pas de liste de courses.');
+    return;
+  }
+
+  // item_key -> booléen coché, partagé entre tous les membres (voir
+  // CLAUDE.md § Modèle de données PocketBase — module Menus).
+  const checkedMap = new Map((await listCheckedForPlanning(planning.id)).map((r) => [r.item_key, r.checked]));
+
+  function paint() {
+    const anyChecked = [...checkedMap.values()].some(Boolean);
+    let html = `<div class="section-head">
+      <div>
+        <div class="section-head-title">Courses</div>
+        <div class="section-head-sub">Coché par n'importe quel membre, visible par tous en direct</div>
+      </div>
+      ${anyChecked ? `<div class="section-head-actions"><button type="button" class="btn-ghost small" data-action="uncheck-all">Tout décocher</button></div>` : ''}
+    </div>`;
+
+    categories.forEach((cat) => {
+      html += `<div class="course-cat">
+        <div class="course-cat-head"><span class="course-cat-ic">${escapeHtml(catInitials(cat.category))}</span><span class="course-cat-name">${escapeHtml(cat.category)}</span></div>
+        <div class="course-panel">
+          ${(cat.items || []).map((item) => courseItemHtml(item, checkedMap.get(item.id) || false)).join('')}
+        </div>
+      </div>`;
+    });
+
+    container.innerHTML = html;
+    wireEvents();
+  }
+
+  function setItemChecked(key, checked) {
+    const el = container.querySelector(`.course-item[data-key="${CSS.escape(key)}"]`);
+    if (!el) return;
+    el.classList.toggle('checked', checked);
+  }
+
+  function wireEvents() {
+    container.onclick = async (e) => {
+      if (e.target.closest('[data-action="uncheck-all"]')) {
+        checkedMap.forEach((v, k) => checkedMap.set(k, false));
+        paint();
+        try {
+          await uncheckAllForPlanning(planning.id);
+        } catch (err) {
+          alert(err.message || "Impossible de tout décocher.");
+        }
+        return;
+      }
+      const item = e.target.closest('.course-item');
+      if (item) {
+        const key = item.dataset.key;
+        const next = !item.classList.contains('checked');
+        checkedMap.set(key, next);
+        item.classList.toggle('checked', next);
+        try {
+          await setChecked(planning.id, key, next);
+        } catch (err) {
+          // Rétablit l'état affiché si l'écriture échoue (ex. hors ligne).
+          checkedMap.set(key, !next);
+          item.classList.toggle('checked', !next);
+          alert(err.message || "Impossible d'enregistrer.");
+        }
+      }
+    };
+  }
+
+  paint();
+
+  // Synchronisation temps réel : un autre membre coche/décoche depuis son
+  // propre appareil → mise à jour ciblée du DOM, sans repeindre tout
+  // l'écran (évite de perdre le scroll pendant qu'on fait ses courses).
+  subscribeChecked(planning.id, (record, action) => {
+    const checked = action === 'delete' ? false : record.checked;
+    checkedMap.set(record.item_key, checked);
+    setItemChecked(record.item_key, checked);
+  });
+}
+
+function courseItemHtml(item, checked) {
+  return `<button type="button" class="course-item${checked ? ' checked' : ''}" data-key="${escapeHtml(item.id)}">
+    <span class="course-check"></span>
+    <div><div class="course-text">${escapeHtml(item.text)}</div>${item.note ? `<div class="course-note">${escapeHtml(item.note)}</div>` : ''}</div>
+  </button>`;
+}
+
+function catInitials(category) {
+  return (category || '')
+    .split(/[\s&]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0].toUpperCase())
+    .join('') || '?';
 }
 
 /* ── Jours ── */

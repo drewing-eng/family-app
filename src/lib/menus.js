@@ -43,6 +43,14 @@ export async function setChecked(planningId, itemKey, checked) {
   return pb.collection('menu_courses_checked').create({ planning: planningId, item_key: itemKey, checked });
 }
 
+// "Tout décocher" : supprime les lignes plutôt que de les mettre à jour une
+// à une (même logique qu'ailleurs dans l'app — une ligne n'existe que si
+// l'état qu'elle représente est vrai, cf. stocks.js).
+export async function uncheckAllForPlanning(planningId) {
+  const rows = await listCheckedForPlanning(planningId);
+  await Promise.all(rows.filter((r) => r.checked).map((r) => pb.collection('menu_courses_checked').delete(r.id)));
+}
+
 // Souscription temps réel (PocketBase Realtime) pour la synchronisation
 // entre membres de la famille — callback(record, action) appelé à chaque
 // création/mise à jour touchant ce planning. Le filtrage par planning se
