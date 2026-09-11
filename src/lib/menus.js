@@ -19,12 +19,26 @@ export async function getCurrentPlanning() {
 // Jours/Courses/Production. Le reste de la structure n'est pas revalidé en
 // détail côté client : le format fait foi (voir spec fournie par
 // l'utilisateur), pas une revalidation exhaustive ici.
-export function importPlanning(data) {
+export async function importPlanning(data) {
   if (!data || typeof data !== 'object') throw new Error('Fichier JSON invalide.');
   if (data.meta?.schemaVersion !== 2) throw new Error('Format non reconnu (schemaVersion doit valoir 2).');
   if (!Array.isArray(data.days)) throw new Error('Le champ "days" est manquant ou invalide.');
   if (!Array.isArray(data.courses)) throw new Error('Le champ "courses" est manquant ou invalide.');
-  return pb.collection('menu_plannings').create({ data, label: data.meta.title || data.meta.period || '' });
+  const planning = await pb.collection('menu_plannings').create({ data, label: data.meta.title || data.meta.period || '' });
+  // Un nouvel import devient le planning courant : l'ancien (et ses cases
+  // cochées / articles ajoutés) n'est alors plus jamais accessible depuis
+  // l'app (voir "planning courant" ci-dessus, aucun écran ne permet de
+  // rouvrir un planning passé) — plutôt que de laisser ces lignes
+  // s'accumuler indéfiniment sans jamais être vues, on vide la table à
+  // chaque import. Best-effort : un échec ici ne doit pas faire échouer un
+  // import par ailleurs réussi.
+  try { await clearAllCourseState(); } catch { /* nettoyage secondaire, non bloquant */ }
+  return planning;
+}
+
+async function clearAllCourseState() {
+  const rows = await pb.collection('menu_courses_checked').getFullList();
+  await Promise.all(rows.map((r) => pb.collection('menu_courses_checked').delete(r.id)));
 }
 
 // ── Cases cochées de la liste de courses (synchronisées entre tous les

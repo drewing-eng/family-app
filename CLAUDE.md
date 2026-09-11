@@ -239,6 +239,15 @@ restent vides.
 | `text` | Text | optionnel — libellé de l'article ajouté ; vide sur une ligne "case cochée" classique. **C'est ce champ qui distingue les deux usages** (`buildCategories()` dans `views/menus.js` ne traite comme "article ajouté" que les lignes où il est renseigné) |
 | `note` | Text | optionnel — note de l'article ajouté |
 
+⚠️ **Un nouvel import vide `menu_courses_checked` en entier** (toutes
+plannings confondus, pas seulement celles de l'ancien planning) —
+`importPlanning()` dans `lib/menus.js`. Décision explicite : aucun écran
+ne permet de rouvrir un planning passé, donc ses cases cochées et
+articles ajoutés ne sont plus jamais vus une fois qu'un import plus
+récent existe ; plutôt que de les laisser s'accumuler indéfiniment en
+base, ils sont supprimés au moment de l'import suivant. Best-effort (un
+échec de ce nettoyage n'invalide pas un import par ailleurs réussi).
+
 **Règles d'API**, identiques sur les deux collections :
 - List/View : `@request.auth.id != ""`
 - Create/Update/Delete : `@request.auth.role = "admin" || @request.auth.role = "membre"`
