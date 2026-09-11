@@ -481,8 +481,8 @@ pour le détail des collections et de leurs règles d'API par rôle.
         par rayon (icône = initiales, pas l'emoji du JSON), cases cochées
         partagées entre membres via PocketBase Realtime (mise à jour DOM
         ciblée, pas de repaint complet), "Tout décocher".
-  - [ ] **Menus-4 — Production** : cartes par jour (`timeLevel`, sections,
-        bloc bébé).
+  - [x] **Menus-4 — Production** : cartes par jour (`timeLevel`, sections,
+        bloc bébé), titres nettoyés des emoji, jours `special` exclus.
   - [ ] **Menus-5 — Widget Wall** : menu du jour réel sur le Wall (remplace
         le placeholder "Bientôt disponible").
 - [ ] **Chantier 5 — Sécurisation** : durcissement de l'admin PocketBase,

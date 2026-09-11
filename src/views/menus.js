@@ -8,6 +8,12 @@ import { icon } from '../lib/icons.js';
 const ADULT_STATUS_LABEL = { deux: 'À deux', solo: 'Solo', absent: 'Absent', invites: 'Invités' };
 const BABY_STATUS = { partage: { label: 'Partagé', badge: 'good' }, separe: { label: 'Séparé', badge: 'warn' } };
 const CARBS_BADGE = { ok: 'good', eleve: 'warn', bloquant: 'danger' };
+const TIME_LEVEL = {
+  rien: { label: 'Rien à préparer', badge: 'neutral' },
+  peu: { label: 'Peu de temps', badge: 'good' },
+  moyen: { label: 'Temps moyen', badge: 'warn' },
+  beaucoup: { label: 'Beaucoup de temps', badge: 'danger' },
+};
 
 // Jour sélectionné sur l'écran Jours : persiste tant qu'on reste sur
 // l'onglet (même mécanisme que currentDetailRangement dans stocks.js).
@@ -37,10 +43,8 @@ export async function renderMenusTab(container, tab, user, opts = {}) {
       renderJours(container, current);
     } else if (tab === 'courses') {
       await renderCourses(container, current);
-    } else {
-      // Production : construite au chantier suivant (voir CLAUDE.md §
-      // Roadmap) — le planning existe déjà, seul l'écran manque.
-      container.innerHTML = emptyState('calendar', 'Écran en construction', 'Cet onglet sera développé au prochain chantier.');
+    } else if (tab === 'production') {
+      renderProduction(container, current);
     }
   } catch (err) {
     container.innerHTML = errorState(err);
@@ -229,6 +233,44 @@ function babyRow(slot, meal) {
     <div class="body"><div class="dish">${escapeHtml(stripEmoji(meal.dish))}</div>${lotLine}${detailLine}</div>
     ${status ? `<span class="badge ${status.badge}">${status.label}</span>` : ''}
   </div>`;
+}
+
+/* ── Production ── */
+function renderProduction(container, planning) {
+  const days = (planning.data?.days || []).filter((d) => !d.special && d.production);
+
+  if (!days.length) {
+    container.innerHTML = emptyState('calendar', 'Rien à produire', 'Ce planning ne contient pas de plan de production.');
+    return;
+  }
+
+  const html = days.map((day) => {
+    const prod = day.production;
+    const level = TIME_LEVEL[prod.timeLevel] || { label: prod.timeLevel, badge: 'neutral' };
+
+    let card = `<div class="prod-day">
+      <div class="prod-day-head"><h4>${escapeHtml(day.label)} ${escapeHtml(day.displayDate)}</h4><span class="badge ${level.badge}">${escapeHtml(level.label)}</span></div>
+      ${prod.sublabel ? `<div class="prod-sub">${escapeHtml(stripEmoji(prod.sublabel))}</div>` : ''}`;
+
+    (prod.sections || []).forEach((section) => {
+      card += `<div class="prod-section">
+        <div class="prod-section-title">${escapeHtml(stripEmoji(section.title))}</div>
+        <ul>${(section.items || []).map((it) => `<li>${escapeHtml(stripEmoji(it))}</li>`).join('')}</ul>
+      </div>`;
+    });
+
+    if (prod.baby) {
+      card += `<div class="prod-baby">
+        <div class="prod-section-title">${escapeHtml(stripEmoji(prod.baby.title))}</div>
+        <ul>${(prod.baby.items || []).map((it) => `<li>${escapeHtml(stripEmoji(it))}</li>`).join('')}</ul>
+      </div>`;
+    }
+
+    card += '</div>';
+    return card;
+  }).join('');
+
+  container.innerHTML = html;
 }
 
 async function renderHistorique(container, canWrite, opts) {

@@ -331,6 +331,17 @@ h1, h2 { font-weight: 700; letter-spacing: -0.02em; }
 .course-text { font-size: 0.88rem; font-weight: 600; }
 .course-note { font-size: 0.74rem; color: var(--muted); margin-top: 2px; }
 
+/* ══════════════ MENUS : écran Production ══════════════ */
+.prod-day { background: var(--panel); box-shadow: var(--shadow-float); border-radius: var(--radius); padding: 20px 22px; margin-bottom: 14px; }
+.prod-day-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 4px; }
+.prod-day-head h4 { font-size: 0.95rem; font-weight: 700; }
+.prod-sub { font-size: 0.78rem; color: var(--muted); margin-bottom: 14px; }
+.prod-section { margin-top: 14px; }
+.prod-section-title { font-size: 0.8rem; font-weight: 700; margin-bottom: 6px; }
+.prod-section ul { margin: 0; padding-left: 18px; }
+.prod-section li { font-size: 0.84rem; margin-bottom: 4px; }
+.prod-baby { background: var(--alt); border-radius: var(--radius-sm); padding: 12px 16px; margin-top: 14px; }
+
 /* ══════════════ MENUS : import + historique ══════════════ */
 .import-zone { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 18px; flex-wrap: wrap; }
 .import-zone-t { font-size: 0.92rem; font-weight: 700; letter-spacing: -0.01em; }
