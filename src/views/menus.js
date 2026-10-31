@@ -55,6 +55,16 @@ export async function renderMenusTab(container, tab, user, opts = {}) {
 
 /* ── Courses ── */
 
+// Préférence "masquer les articles cochés" : propre à l'appareil (confort
+// d'affichage, pas une donnée partagée), donc localStorage et pas PocketBase.
+const HIDE_CHECKED_KEY = 'courses.hideChecked';
+function readHideChecked() {
+  try { return localStorage.getItem(HIDE_CHECKED_KEY) === '1'; } catch { return false; }
+}
+function writeHideChecked(value) {
+  try { localStorage.setItem(HIDE_CHECKED_KEY, value ? '1' : '0'); } catch { /* stockage indisponible : préférence non retenue */ }
+}
+
 // Fusionne les rayons du JSON importé avec les articles ajoutés par les
 // membres (lignes de menu_courses_checked qui portent un `text` — voir
 // lib/menus.js:addCourseItem). Un article ajouté rejoint le rayon existant
@@ -92,6 +102,16 @@ async function renderCourses(container, planning, canWrite) {
       ${actions.length ? `<div class="section-head-actions">${actions.join('')}</div>` : ''}
     </div>`;
 
+    if (categories.length) {
+      // Le masquage se fait en CSS (.hide-checked sur .courses) : une case
+      // cochée en direct par un autre membre disparaît sans repeindre l'écran.
+      html += `<label class="switch-row">
+        <span class="switch-label">Masquer les articles cochés</span>
+        <input type="checkbox" class="switch-input" data-action="toggle-hide-checked"${readHideChecked() ? ' checked' : ''} />
+        <span class="switch" aria-hidden="true"></span>
+      </label>`;
+    }
+
     if (!categories.length) {
       html += emptyState('box', 'Aucune liste de courses', canWrite ? 'Ajoute le premier article ci-dessus.' : 'Ce planning ne contient pas de liste de courses.');
     } else {
@@ -103,9 +123,10 @@ async function renderCourses(container, planning, canWrite) {
           </div>
         </div>`;
       });
+      html += `<div class="courses-all-done">Tous les articles sont cochés.</div>`;
     }
 
-    container.innerHTML = html;
+    container.innerHTML = `<div class="courses${readHideChecked() ? ' hide-checked' : ''}">${html}</div>`;
     wireEvents();
   }
 
@@ -116,6 +137,11 @@ async function renderCourses(container, planning, canWrite) {
   }
 
   function wireEvents() {
+    container.onchange = (e) => {
+      if (!e.target.matches('[data-action="toggle-hide-checked"]')) return;
+      writeHideChecked(e.target.checked);
+      container.querySelector('.courses')?.classList.toggle('hide-checked', e.target.checked);
+    };
     container.onclick = async (e) => {
       if (e.target.closest('[data-action="add-item"]')) {
         dialogAddCourseItem(planning, categories, refresh);
